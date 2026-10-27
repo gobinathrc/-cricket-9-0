@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { Play, Pause, FastForward, RotateCcw, Trophy, Skull } from "lucide-react";
-import { evaluateSquadTactics, WORLD_CUP_SCHEDULE, simulateFixture } from "../engine/simulator";
+import { WORLD_CUP_SCHEDULE } from "../engine/simulator";
 import { MatchResult, PlayerEditionRecord } from "../types/cricket";
-import { logInfo } from "../utils/logger";
+import { logInfo, logError } from "../utils/logger";
 
 interface GauntletRunnerProps {
   draftedPlayers: PlayerEditionRecord[];
@@ -14,8 +14,7 @@ interface GauntletRunnerProps {
 }
 
 /**
- * Interactive 9-match World Cup tournament runner.
- * Simulates fixtures sequentially through Group Stage, Super 8s, Semi-Final, and Final.
+ * Interactive 9-match World Cup tournament runner connected to the server API backend.
  *
  * @param props - GauntletRunnerProps
  */
@@ -23,8 +22,6 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
   draftedPlayers,
   onResetDraft,
 }) => {
-  const squad = evaluateSquadTactics(draftedPlayers);
-
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0); // 0 to 8
   const [matchHistory, setMatchHistory] = useState<MatchResult[]>([]);
   const [activeResult, setActiveResult] = useState<MatchResult | null>(null);
@@ -32,19 +29,43 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
   const [isSimulatingCurrent, setIsSimulatingCurrent] = useState(false);
   const [runFailed, setRunFailed] = useState(false);
   const [isChampion, setIsChampion] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
 
-  const autoPlayRef = useRef(isAutoPlaying);
-  autoPlayRef.current = isAutoPlaying;
+  // Computes tactical averages
+  const teamBattingOvr = Math.round(
+    [...draftedPlayers].sort((a, b) => b.subRatings.batting - a.subRatings.batting).slice(0, 7)
+      .reduce((acc, curr) => acc + curr.subRatings.batting, 0) / 7
+  );
+  const teamBowlingOvr = Math.round(
+    [...draftedPlayers].sort((a, b) => b.subRatings.bowling - a.subRatings.bowling).slice(0, 5)
+      .reduce((acc, curr) => acc + curr.subRatings.bowling, 0) / 5
+  );
 
-  const runSingleMatch = () => {
+  const runSingleMatch = async () => {
     if (runFailed || isChampion || currentMatchIndex >= 9 || isSimulatingCurrent) return;
 
     setIsSimulatingCurrent(true);
-    const opponent = WORLD_CUP_SCHEDULE[currentMatchIndex];
-    const matchNumber = currentMatchIndex + 1;
+    setServerError(null);
 
-    setTimeout(() => {
-      const result = simulateFixture(squad, opponent, matchNumber);
+    try {
+      // Server-authoritative match simulation
+      const res = await fetch("/api/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          draftedPlayers,
+          matchIndex: currentMatchIndex,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Simulation error on server");
+      }
+
+      const result: MatchResult = json.data.result;
+      const isChampionshipDecider: boolean = json.data.isChampion;
+
       setActiveResult(result);
       setMatchHistory((prev) => [...prev, result]);
       setIsSimulatingCurrent(false);
@@ -52,19 +73,47 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
       if (!result.userWon) {
         setIsAutoPlaying(false);
         setRunFailed(true);
-        logInfo(`9-0 Run failed at match ${matchNumber} (${opponent.stageName})`, { opponent: opponent.name });
+        // Post run to leaderboard asynchronously
+        fetch("/api/leaderboard", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userName: "Challenger",
+            streak: currentMatchIndex,
+            isChampion: false,
+            teamAverageOvr: Math.round((teamBattingOvr + teamBowlingOvr) / 2),
+            finalStage: json.data.stageName,
+            summary: `Defeated in ${json.data.stageName} by ${result.opponentName}`,
+          }),
+        }).catch((err) => logError("Failed to record run to leaderboard", { err }));
       } else {
         const nextIndex = currentMatchIndex + 1;
         setCurrentMatchIndex(nextIndex);
 
-        if (nextIndex === 9) {
+        if (isChampionshipDecider || nextIndex === 9) {
           setIsAutoPlaying(false);
           setIsChampion(true);
           confetti({ particleCount: 200, spread: 90, origin: { y: 0.55 } });
-          logInfo("User completed 9-0 UNDEFEATED WORLD CUP CAMPAIGN!");
+
+          fetch("/api/leaderboard", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userName: "ChampionSkipper",
+              streak: 9,
+              isChampion: true,
+              teamAverageOvr: Math.round((teamBattingOvr + teamBowlingOvr) / 2),
+              finalStage: "THE FINAL (Champions)",
+              summary: "Undefeated 9-0 clean sweep World Champions",
+            }),
+          }).catch((err) => logError("Failed to record champion run", { err }));
         }
       }
-    }, 700);
+    } catch (err) {
+      setIsSimulatingCurrent(false);
+      setIsAutoPlaying(false);
+      setServerError(err instanceof Error ? err.message : "Network error");
+    }
   };
 
   useEffect(() => {
@@ -72,7 +121,7 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
     if (isAutoPlaying && !runFailed && !isChampion && currentMatchIndex < 9) {
       timer = setTimeout(() => {
         runSingleMatch();
-      }, 1000);
+      }, 950);
     }
     return () => clearTimeout(timer);
   }, [isAutoPlaying, currentMatchIndex, runFailed, isChampion]);
@@ -103,14 +152,15 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
               <button
                 onClick={runSingleMatch}
                 disabled={isSimulatingCurrent || isAutoPlaying}
-                className="px-4 py-2.5 rounded-xl text-xs font-bold font-mono bg-white/10 hover:bg-white/20 border border-white/10 text-white flex items-center gap-1.5 transition active:scale-95"
+                className="px-4 py-2.5 rounded-xl text-xs font-bold font-mono bg-white/10 hover:bg-white/20 border border-white/10 text-white flex items-center gap-1.5 transition active:scale-95 disabled:opacity-50"
               >
                 <FastForward className="w-4 h-4 text-amber-400" />
-                SIM 1 MATCH
+                {isSimulatingCurrent ? "SIMULATING..." : "SIM 1 MATCH"}
               </button>
 
               <button
                 onClick={() => setIsAutoPlaying(!isAutoPlaying)}
+                disabled={isSimulatingCurrent}
                 className={`px-5 py-2.5 rounded-xl text-xs font-bold font-mono flex items-center gap-2 transition shadow-lg ${
                   isAutoPlaying
                     ? "bg-amber-500 text-slate-950 shadow-amber-500/20"
@@ -132,6 +182,12 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
           </button>
         </div>
       </div>
+
+      {serverError && (
+        <div className="p-3 bg-red-500/20 border border-red-500/40 rounded-xl text-xs font-mono text-red-300 text-center">
+          {serverError}
+        </div>
+      )}
 
       {/* Progress Bar towards 9 */}
       <div className="w-full bg-slate-800/60 rounded-full h-2.5 overflow-hidden border border-white/5">
@@ -189,9 +245,9 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
               <span className="text-xs font-mono text-slate-400">YOUR STARTING XI</span>
               <span className="text-lg font-bold text-white mt-1">Invincible Challengers</span>
               <div className="flex items-center gap-3 mt-2 text-xs font-mono text-slate-300">
-                <span>BAT: {squad.teamBattingOvr}</span>
+                <span>BAT: {teamBattingOvr}</span>
                 <span>•</span>
-                <span>BOWL: {squad.teamBowlingOvr}</span>
+                <span>BOWL: {teamBowlingOvr}</span>
               </div>
             </div>
 
@@ -218,7 +274,7 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
             >
               <div>
                 <span className="text-xs font-mono text-emerald-300 font-semibold uppercase">
-                  Last Matchday Verdict
+                  Last Matchday Verdict (Server Verified)
                 </span>
                 <div className="text-base font-bold text-white mt-0.5">
                   User {activeResult.userScore.runs}/{activeResult.userScore.wickets} vs {activeResult.opponentName} {activeResult.opponentScore.runs}/{activeResult.opponentScore.wickets}

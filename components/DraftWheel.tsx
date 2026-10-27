@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Disc, Sparkles, Trophy, ArrowRight } from "lucide-react";
 import { DraftSessionState } from "../engine/draft";
 import { PlayerEditionRecord } from "../types/cricket";
@@ -9,12 +9,14 @@ import { PlayerPickCard } from "./PlayerPickCard";
 
 interface DraftWheelProps {
   session: DraftSessionState;
-  onSpin: () => void;
-  onSelectPick: (player: PlayerEditionRecord) => void;
+  onSpin: () => Promise<void> | void;
+  onSelectPick: (player: PlayerEditionRecord) => Promise<void> | void;
+  isLoading?: boolean;
 }
 
 /**
  * Interactive drafting wheel and player selector for the 11-round session.
+ * Connected to server API endpoints with optimistic loading states.
  *
  * @param props - DraftWheelProps
  */
@@ -22,25 +24,19 @@ export const DraftWheel: React.FC<DraftWheelProps> = ({
   session,
   onSpin,
   onSelectPick,
+  isLoading = false,
 }) => {
-  const [isSpinning, setIsSpinning] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerEditionRecord | null>(null);
 
-  const handleSpinClick = () => {
-    if (isSpinning || session.activeSquad) return;
-    setIsSpinning(true);
+  const handleSpinClick = async () => {
+    if (isLoading || session.activeSquad) return;
     setSelectedPlayer(null);
-
-    // Simulate rapid slot machine cycle before locking
-    setTimeout(() => {
-      onSpin();
-      setIsSpinning(false);
-    }, 900);
+    await onSpin();
   };
 
-  const handleConfirmPick = () => {
-    if (!selectedPlayer) return;
-    onSelectPick(selectedPlayer);
+  const handleConfirmPick = async () => {
+    if (!selectedPlayer || isLoading) return;
+    await onSelectPick(selectedPlayer);
     setSelectedPlayer(null);
   };
 
@@ -81,8 +77,8 @@ export const DraftWheel: React.FC<DraftWheelProps> = ({
           <div className="absolute inset-0 bg-gradient-to-b from-amber-500/10 via-transparent to-transparent pointer-events-none" />
 
           <motion.div
-            animate={{ rotate: isSpinning ? 720 : 0 }}
-            transition={{ duration: 0.9, ease: "easeInOut" }}
+            animate={{ rotate: isLoading ? 720 : 0 }}
+            transition={{ duration: 0.9, repeat: isLoading ? Infinity : 0, ease: "easeInOut" }}
             className="w-20 h-20 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-6 text-amber-400 shadow-inner"
           >
             <Disc className="w-10 h-10 animate-pulse" />
@@ -97,11 +93,11 @@ export const DraftWheel: React.FC<DraftWheelProps> = ({
 
           <button
             onClick={handleSpinClick}
-            disabled={isSpinning}
-            className="px-8 py-4 rounded-xl font-bold text-base bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 shadow-lg shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center gap-2"
+            disabled={isLoading}
+            className="px-8 py-4 rounded-xl font-bold text-base bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 shadow-lg shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center gap-2 disabled:opacity-60"
           >
             <Sparkles className="w-5 h-5" />
-            {isSpinning ? "Spinning Reel..." : "SPIN FOR SQUAD"}
+            {isLoading ? "Spinning Server Reel..." : "SPIN FOR SQUAD"}
           </button>
         </motion.div>
       ) : (
@@ -115,7 +111,7 @@ export const DraftWheel: React.FC<DraftWheelProps> = ({
           <div className="flex items-center justify-between pb-4 border-b border-white/10">
             <div className="flex flex-col">
               <span className="text-xs uppercase tracking-wider font-mono text-slate-400 font-semibold">
-                Drawn Tournament Squad
+                Drawn Tournament Squad (Server Verified)
               </span>
               <div className="flex items-center gap-2 mt-0.5">
                 <h4 className="text-xl font-bold text-white">
@@ -160,14 +156,14 @@ export const DraftWheel: React.FC<DraftWheelProps> = ({
 
             <button
               onClick={handleConfirmPick}
-              disabled={!selectedPlayer}
+              disabled={!selectedPlayer || isLoading}
               className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-all ${
-                selectedPlayer
+                selectedPlayer && !isLoading
                   ? "bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-lg shadow-amber-400/30 hover:scale-105"
                   : "bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5"
               }`}
             >
-              CONFIRM PICK
+              {isLoading ? "Validating Pick..." : "CONFIRM PICK"}
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>

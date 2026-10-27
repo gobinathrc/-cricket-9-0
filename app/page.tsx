@@ -5,13 +5,16 @@ import { Header } from "../components/Header";
 import { DraftWheel } from "../components/DraftWheel";
 import { SquadXIView } from "../components/SquadXIView";
 import { GauntletRunner } from "../components/GauntletRunner";
+import { LeaderboardModal } from "../components/LeaderboardModal";
 import { ALL_TOURNAMENT_SQUADS } from "../data/squads";
-import { createDraftSession, selectDraftPick, spinDraftWheel, DraftSessionState } from "../engine/draft";
+import { createDraftSession, DraftSessionState } from "../engine/draft";
 import { PlayerEditionRecord } from "../types/cricket";
-import { Swords, Users } from "lucide-react";
+import { Swords, Trophy } from "lucide-react";
+import { logError } from "../utils/logger";
 
 /**
- * Main application page driving the draft session and 72-match simulation cycle.
+ * Main application page driving the draft session and 9-match simulation cycle.
+ * Integrated with Next.js backend API routes (/api/draft/*, /api/simulate, /api/leaderboard).
  */
 export default function HomePage() {
   const [session, setSession] = useState<DraftSessionState>(() =>
@@ -19,27 +22,128 @@ export default function HomePage() {
   );
 
   const [activeTab, setActiveTab] = useState<"DRAFT" | "SQUAD">("DRAFT");
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
-  const handleSpin = () => {
-    setSession((prev) => spinDraftWheel(prev));
+  // Server-side spin
+  const handleSpin = async () => {
+    setIsLoading(true);
+    setApiError(null);
+
+    try {
+      const res = await fetch("/api/draft/spin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentRound: session.currentRound,
+          draftedAthleteIds: session.draftedAthleteIds,
+          draftedPlayers: session.draftedPlayers,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Failed to spin draft wheel on server");
+      }
+
+      setSession((prev) => ({
+        ...prev,
+        activeSquad: json.data.activeSquad,
+        currentRound: json.data.currentRound,
+      }));
+    } catch (err) {
+      logError("Frontend spin error", { err });
+      setApiError(err instanceof Error ? err.message : "Error connecting to backend");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSelectPick = (player: PlayerEditionRecord) => {
-    setSession((prev) => selectDraftPick(prev, player));
+  // Server-side pick confirmation
+  const handleSelectPick = async (player: PlayerEditionRecord) => {
+    if (!session.activeSquad) return;
+    setIsLoading(true);
+    setApiError(null);
+
+    try {
+      const res = await fetch("/api/draft/pick", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activeSquadId: session.activeSquad.id,
+          playerId: player.id,
+          currentRound: session.currentRound,
+          draftedPlayers: session.draftedPlayers,
+          draftedAthleteIds: session.draftedAthleteIds,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "Pick rejected by server");
+      }
+
+      setSession((prev) => ({
+        ...prev,
+        draftedPlayers: json.data.draftedPlayers,
+        draftedAthleteIds: json.data.draftedAthleteIds,
+        currentRound: json.data.currentRound,
+        activeSquad: null,
+        isComplete: json.data.isComplete,
+      }));
+    } catch (err) {
+      logError("Frontend pick error", { err });
+      setApiError(err instanceof Error ? err.message : "Failed to record pick");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleResetDraft = () => {
-    setSession(createDraftSession(ALL_TOURNAMENT_SQUADS));
-    setActiveTab("DRAFT");
+  const handleResetDraft = async () => {
+    setIsLoading(true);
+    setApiError(null);
+
+    try {
+      const res = await fetch("/api/draft/session", { method: "POST" });
+      const json = await res.json();
+      if (json.success && json.data) {
+        setSession(json.data);
+      } else {
+        setSession(createDraftSession(ALL_TOURNAMENT_SQUADS));
+      }
+    } catch {
+      setSession(createDraftSession(ALL_TOURNAMENT_SQUADS));
+    } finally {
+      setIsLoading(false);
+      setActiveTab("DRAFT");
+    }
   };
 
   return (
     <main className="flex-1 flex flex-col items-center max-w-5xl w-full mx-auto px-4 pb-16">
       <Header />
 
-      {/* Main Mode Switcher: Drafting vs 72-0 Simulation Gauntlet */}
+      {/* Leaderboard Trigger Button */}
+      <div className="w-full flex justify-end mb-2">
+        <button
+          onClick={() => setShowLeaderboard(true)}
+          className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold bg-white/5 hover:bg-white/10 border border-white/10 text-amber-300 transition"
+        >
+          <Trophy className="w-4 h-4 text-amber-400" />
+          HALL OF FAME
+        </button>
+      </div>
+
+      {apiError && (
+        <div className="w-full max-w-xl mb-4 p-3 rounded-xl bg-red-500/20 border border-red-500/40 text-xs font-mono text-red-300 text-center">
+          {apiError}
+        </div>
+      )}
+
+      {/* Main Mode Switcher: Drafting vs 9-0 Simulation Gauntlet */}
       {!session.isComplete ? (
-        <div className="w-full flex flex-col items-center gap-6 mt-4">
+        <div className="w-full flex flex-col items-center gap-6 mt-2">
           {/* Mobile Tab Toggle */}
           <div className="flex sm:hidden p-1 bg-slate-900/60 border border-white/10 rounded-xl">
             <button
@@ -67,6 +171,7 @@ export default function HomePage() {
                 session={session}
                 onSpin={handleSpin}
                 onSelectPick={handleSelectPick}
+                isLoading={isLoading}
               />
             </div>
 
@@ -98,6 +203,9 @@ export default function HomePage() {
           </div>
         </div>
       )}
+
+      {/* Leaderboard Modal */}
+      <LeaderboardModal isOpen={showLeaderboard} onClose={() => setShowLeaderboard(false)} />
     </main>
   );
 }
