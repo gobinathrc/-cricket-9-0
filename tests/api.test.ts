@@ -4,6 +4,7 @@ import { POST as handleSpinPost } from "../app/api/draft/spin/route";
 import { POST as handlePickPost } from "../app/api/draft/pick/route";
 import { POST as handleSimulatePost } from "../app/api/simulate/route";
 import { GET as handleLeaderboardGet, POST as handleLeaderboardPost } from "../app/api/leaderboard/route";
+import { GET as handleLeagueGet, POST as handleLeaguePost } from "../app/api/league/route";
 import { NextRequest } from "next/server";
 import { ALL_TOURNAMENT_SQUADS } from "../data/squads";
 
@@ -203,5 +204,47 @@ describe("Next.js Backend API Route Handlers", () => {
     expect(json.success).toBe(true);
     expect(json.data.userName).toBe("InvincibleSkipper");
     expect(json.data.streak).toBe(9);
+  });
+
+  it("GET /api/league returns 8 teams and 14-matchday schedule", async () => {
+    const res = await handleLeagueGet();
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.data.teams.length).toBe(8);
+    expect(json.data.schedule.length).toBe(14);
+    expect(json.data.initialStandings.length).toBe(8);
+  });
+
+  it("POST /api/league simulates a matchday across all 8 teams and updates standings", async () => {
+    const squad11 = Array.from({ length: 11 }).map((_, i) => ({
+      id: `p_${i}`,
+      athleteId: `ath_${i}`,
+      name: `Player ${i}`,
+      countryCode: "IND",
+      editionYear: 2024,
+      role: i === 0 ? "WK" : i < 5 ? "BAT" : i < 7 ? "AR" : "BOWL",
+      battingStyle: "RHB",
+      bowlingType: i >= 5 ? "FAST" : "NONE",
+      ovr: 90,
+      subRatings: { batting: 90, bowling: i >= 5 ? 90 : 50, paceOrTurn: 85, clutch: 90 },
+      tournamentStats: { runs: 100, ballsFaced: 70, strikeRate: 140, average: 30, wickets: 5, oversBowled: 15, economy: 7.0 },
+    }));
+
+    const req = createMockNextRequest("http://localhost:3000/api/league", {
+      draftedPlayers: squad11,
+      matchdayIndex: 0,
+      currentStandings: [],
+    });
+
+    const res = await handleLeaguePost(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.data.matchdayResult.matchdayNumber).toBe(1);
+    expect(json.data.matchdayResult.fixtureResults.length).toBe(4);
+    expect(json.data.matchdayResult.updatedStandings.length).toBe(8);
   });
 });
