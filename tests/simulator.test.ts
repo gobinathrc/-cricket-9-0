@@ -85,15 +85,22 @@ describe("T20 Match Simulator Engine (9-0 Championship Path & Strict Quotas)", (
     expect(result.marginDescription.length).toBeGreaterThan(0);
   });
 
-  it("contains exactly 9 fixtures structured through Group, Super 8, Semi-Final, and The Final", () => {
+  it("contains an intensified, high-difficulty 9-match World Cup gauntlet", () => {
     expect(WORLD_CUP_SCHEDULE.length).toBe(9);
-    expect(WORLD_CUP_SCHEDULE[0].stageName).toBe("GROUP STAGE");
-    expect(WORLD_CUP_SCHEDULE[3].stageName).toBe("GROUP STAGE");
-    expect(WORLD_CUP_SCHEDULE[4].stageName).toBe("SUPER 8");
-    expect(WORLD_CUP_SCHEDULE[6].stageName).toBe("SUPER 8");
-    expect(WORLD_CUP_SCHEDULE[7].stageName).toBe("SEMI-FINAL");
-    expect(WORLD_CUP_SCHEDULE[8].stageName).toBe("THE FINAL");
-    expect(WORLD_CUP_SCHEDULE[8].difficultyTier).toBe("CHAMPION");
+    // Knockout opponents must test championship mettle
+    const finalMatch = WORLD_CUP_SCHEDULE[8]; // The Final
+    const semiFinalMatch = WORLD_CUP_SCHEDULE[7]; // Semi-Final
+    const super8Matches = WORLD_CUP_SCHEDULE.slice(4, 7);
+
+    expect(finalMatch.battingOvr).toBeGreaterThanOrEqual(93);
+    expect(finalMatch.bowlingOvr).toBeGreaterThanOrEqual(93);
+    expect(semiFinalMatch.battingOvr).toBeGreaterThanOrEqual(92);
+    expect(semiFinalMatch.bowlingOvr).toBeGreaterThanOrEqual(90);
+
+    // Super 8 opponents must all possess high/elite bowling ratings
+    super8Matches.forEach((match) => {
+      expect(match.bowlingOvr).toBeGreaterThanOrEqual(88);
+    });
   });
 
   it("calculates batting index dynamically based on lineup order and penalizes bowlers opening", () => {

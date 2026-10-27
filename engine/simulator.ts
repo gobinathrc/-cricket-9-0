@@ -29,8 +29,8 @@ export const WORLD_CUP_SCHEDULE: OpponentTeamProfile[] = [
     name: "Ireland T20",
     countryCode: "IRE",
     difficultyTier: "NORMAL",
-    battingOvr: 78,
-    bowlingOvr: 77,
+    battingOvr: 81,
+    bowlingOvr: 81,
     starPlayer: "P. Stirling",
   },
   {
@@ -40,9 +40,9 @@ export const WORLD_CUP_SCHEDULE: OpponentTeamProfile[] = [
     name: "USA T20",
     countryCode: "USA",
     difficultyTier: "NORMAL",
-    battingOvr: 77,
-    bowlingOvr: 76,
-    starPlayer: "A. Jones",
+    battingOvr: 80,
+    bowlingOvr: 82,
+    starPlayer: "S. Netravalkar",
   },
   {
     id: "match_3",
@@ -51,8 +51,8 @@ export const WORLD_CUP_SCHEDULE: OpponentTeamProfile[] = [
     name: "Pakistan T20",
     countryCode: "PAK",
     difficultyTier: "HIGH",
-    battingOvr: 84,
-    bowlingOvr: 88,
+    battingOvr: 87,
+    bowlingOvr: 90,
     starPlayer: "Shaheen Afridi",
   },
   {
@@ -62,12 +62,12 @@ export const WORLD_CUP_SCHEDULE: OpponentTeamProfile[] = [
     name: "Bangladesh T20",
     countryCode: "BAN",
     difficultyTier: "NORMAL",
-    battingOvr: 80,
-    bowlingOvr: 81,
+    battingOvr: 82,
+    bowlingOvr: 84,
     starPlayer: "Shakib Al Hasan",
   },
 
-  // Stage 2: Super 8 Stage (Matches 5-7)
+  // Stage 2: Super 8 Stage (Matches 5-7) - Elevated Tournament Difficulty
   {
     id: "match_5",
     stageName: "SUPER 8",
@@ -75,8 +75,8 @@ export const WORLD_CUP_SCHEDULE: OpponentTeamProfile[] = [
     name: "Afghanistan T20",
     countryCode: "AFG",
     difficultyTier: "HIGH",
-    battingOvr: 82,
-    bowlingOvr: 89,
+    battingOvr: 86,
+    bowlingOvr: 92,
     starPlayer: "Rashid Khan",
   },
   {
@@ -86,8 +86,8 @@ export const WORLD_CUP_SCHEDULE: OpponentTeamProfile[] = [
     name: "West Indies T20",
     countryCode: "WI",
     difficultyTier: "ELITE",
-    battingOvr: 89,
-    bowlingOvr: 84,
+    battingOvr: 92,
+    bowlingOvr: 88,
     starPlayer: "N. Pooran",
   },
   {
@@ -97,8 +97,8 @@ export const WORLD_CUP_SCHEDULE: OpponentTeamProfile[] = [
     name: "Australia T20",
     countryCode: "AUS",
     difficultyTier: "ELITE",
-    battingOvr: 89,
-    bowlingOvr: 89,
+    battingOvr: 92,
+    bowlingOvr: 92,
     starPlayer: "T. Head",
   },
 
@@ -110,12 +110,12 @@ export const WORLD_CUP_SCHEDULE: OpponentTeamProfile[] = [
     name: "England T20",
     countryCode: "ENG",
     difficultyTier: "ELITE",
-    battingOvr: 90,
-    bowlingOvr: 88,
+    battingOvr: 93,
+    bowlingOvr: 91,
     starPlayer: "J. Buttler",
   },
 
-  // Stage 4: The T20 World Cup Final (Match 9)
+  // Stage 4: The T20 World Cup Final (Match 9) - Boss Tier Championship Match
   {
     id: "match_9",
     stageName: "THE FINAL",
@@ -123,8 +123,8 @@ export const WORLD_CUP_SCHEDULE: OpponentTeamProfile[] = [
     name: "South Africa T20",
     countryCode: "SA",
     difficultyTier: "CHAMPION",
-    battingOvr: 91,
-    bowlingOvr: 91,
+    battingOvr: 94,
+    bowlingOvr: 93,
     starPlayer: "H. Klaasen",
   },
 ];
@@ -308,7 +308,19 @@ export function simulateFixture(
   }
 
   if (squad.wkCount < 1) {
-    effectiveUserBowling -= 6;
+    effectiveUserBowling -= 8;
+  }
+
+  // Tournament stage pressure: Super 8 (Matches 5-7), Semi-Final (8), Final (9)
+  const isKnockoutStage = matchNumber >= 5;
+  const stagePressurePenalty = isKnockoutStage ? (matchNumber >= 8 ? 4 : 2) : 0;
+
+  // Weak bowling leakage in death overs against elite tournament batters
+  const weakBowlersCount = squad.players
+    .filter((p) => p.role === "BOWL" || p.role === "AR")
+    .filter((p) => (p.subRatings?.bowling ?? p.ovr) < 80).length;
+  if (isKnockoutStage && weakBowlersCount > 0) {
+    effectiveUserBowling -= weakBowlersCount * 3;
   }
 
   // Count how many bowlers / weak batsmen are placed in the critical top 3 positions
@@ -333,7 +345,7 @@ export function simulateFixture(
   if (userBatsFirst) {
     // --- User 1st Innings (Setting Target) ---
     const batDelta = squad.teamBattingOvr - opponent.bowlingOvr;
-    const base1stRuns = 162 + batDelta * 1.8 - bowlersInTopOrder * 10;
+    const base1stRuns = 162 + batDelta * 1.8 - bowlersInTopOrder * 10 - stagePressurePenalty;
     const variance1st = (Math.random() - 0.5) * 26;
     userRuns = Math.round(Math.max(90, Math.min(230, base1stRuns + variance1st)));
     userWickets = Math.round(

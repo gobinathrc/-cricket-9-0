@@ -23,6 +23,7 @@ import {
   getPlayerPositionMismatch,
 } from "../engine/lineup";
 import { PlayerEditionRecord, TacticalFormation, PlayerRole } from "../types/cricket";
+import { CricketPitchView } from "./CricketPitchView";
 
 interface SquadXIViewProps {
   draftedPlayers: PlayerEditionRecord[];
@@ -44,6 +45,9 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({
   onReorderLineup,
 }) => {
   const squad = evaluateSquadTactics(draftedPlayers, formation);
+
+  // View mode state: Lineup Cards vs 2D Cricket Pitch Field
+  const [activeView, setActiveView] = useState<"CARDS" | "PITCH">("CARDS");
 
   // Drag and drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -306,7 +310,7 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({
 
       {/* Starting XI Batting Order & Lineup Positions */}
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-1">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-1">
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
               <h4 className="text-base font-bold uppercase tracking-wider font-mono text-white">
@@ -321,203 +325,234 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({
             </p>
           </div>
 
-          {draftedPlayers.length >= 2 && onReorderLineup && (
-            <button
-              onClick={handleAutoOrder}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 border border-amber-400/30 transition shadow-sm"
-              title="Automatically arrange batting order: Openers -> Middle Order -> Keepers -> All-Rounders -> Bowlers"
-            >
-              <Wand2 className="w-3.5 h-3.5 text-amber-400" />
-              <span>Auto-Order Lineup</span>
-            </button>
-          )}
-        </div>
-
-        {/* 38-0 Style Starting XI Grid: Bigger, Card-Styled, Draggable */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          {Array.from({ length: 11 }).map((_, index) => {
-            const player = draftedPlayers[index];
-            const positionInfo = getBattingPositionLabel(index);
-            const isBeingDragged = draggedIndex === index;
-            const isHoveredTarget = dragOverIndex === index && draggedIndex !== index;
-
-            if (player) {
-              const styles = getRoleCardStyles(player.role);
-              const mismatch = getPlayerPositionMismatch(player, index);
-
-              return (
-                <motion.div
-                  key={player.id}
-                  layout
-                  layoutId={player.id}
-                  transition={{ type: "spring", stiffness: 350, damping: 28 }}
-                  draggable={Boolean(onReorderLineup && draftedPlayers.length > 1)}
-                  onDragStart={(e) => handleDragStart(e as unknown as React.DragEvent<HTMLDivElement>, index)}
-                  onDragOver={(e) => handleDragOver(e as unknown as React.DragEvent<HTMLDivElement>, index)}
-                  onDragLeave={() => handleDragLeave(index)}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    handleDrop(index);
-                  }}
-                  onDragEnd={handleDragEnd}
-                  className={`relative p-4 rounded-2xl bg-gradient-to-br ${styles.glow} border ${
-                    isHoveredTarget
-                      ? "ring-2 ring-amber-400 border-amber-400 bg-amber-400/20 scale-[1.02] shadow-xl shadow-amber-400/30 z-20"
-                      : isBeingDragged
-                      ? "opacity-35 scale-95 border-amber-400/60"
-                      : mismatch.isMismatch
-                      ? "border-red-500/50 shadow-red-500/10 shadow-lg"
-                      : `${styles.border} shadow-lg`
-                  } backdrop-blur-xl flex flex-col justify-between gap-3 group transition-all duration-150 cursor-grab active:cursor-grabbing select-none`}
-                >
-                  {/* Card Header: Position Badge, Drag Grip, and Large 38-0 OVR */}
-                  <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2.5">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="text-slate-400 group-hover:text-amber-400 transition cursor-grab active:cursor-grabbing"
-                        title="Drag to swap or move batting position"
-                      >
-                        <GripVertical className="w-4 h-4" />
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-mono font-black text-amber-400">
-                          #{index + 1}
-                        </span>
-                        <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${styles.tagText}`}>
-                          {positionInfo.title}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Big Bold 38-0 Style OVR */}
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[10px] font-mono font-extrabold px-1.5 py-0.5 rounded border ${styles.badge}`}>
-                        {player.role}
-                      </span>
-                      <span className="text-2xl font-black font-mono tracking-tight text-white drop-shadow-md">
-                        {player.ovr}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Card Body: Large Player Name & Tournament Origins */}
-                  <div className="flex flex-col gap-1 my-0.5">
-                    <h5 className="text-base font-extrabold text-white tracking-wide truncate drop-shadow">
-                      {player.name}
-                    </h5>
-                    <div className="flex items-center gap-2 text-xs font-mono text-slate-300">
-                      <span className="font-semibold text-slate-200">
-                        {player.countryCode} ({player.editionYear})
-                      </span>
-                      <span>·</span>
-                      <span className="text-slate-400 text-[11px]">
-                        {player.battingStyle} · {player.bowlingType !== "NONE" ? player.bowlingType : "BAT"}
-                      </span>
-                    </div>
-
-                    {/* Out of position tactical mismatch warning */}
-                    {mismatch.isMismatch && (
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-red-500/20 border border-red-500/40 text-[10px] font-mono font-bold text-red-300 mt-1">
-                        <AlertTriangle className="w-3 h-3 text-red-400 flex-shrink-0" />
-                        <span className="truncate">{mismatch.message}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Card Footer: Sub-Rating Chips & Steppers */}
-                  <div className="flex items-center justify-between pt-2 border-t border-white/10 gap-2">
-                    {/* Mini Sub-Rating Stats (38-0 Style) */}
-                    <div className="flex items-center gap-2 text-[10px] font-mono">
-                      <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/10">
-                        <span className="text-slate-400">BAT:</span>
-                        <span className="font-bold text-amber-300">
-                          {player.subRatings?.batting || player.ovr}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/10">
-                        <span className="text-slate-400">BOWL:</span>
-                        <span className="font-bold text-emerald-300">
-                          {player.subRatings?.bowling || 40}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/10">
-                        <span className="text-slate-400">CLUTCH:</span>
-                        <span className="font-bold text-purple-300">
-                          {player.subRatings?.clutch || 85}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Step Up / Down Buttons for Click Reordering */}
-                    {onReorderLineup && draftedPlayers.length > 1 && (
-                      <div className="flex items-center gap-1">
-                        <button
-                          disabled={index === 0}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleMoveUp(index);
-                          }}
-                          className="p-1 rounded bg-white/5 hover:bg-amber-400/20 text-slate-400 hover:text-amber-300 disabled:opacity-20 border border-white/10 transition"
-                          title="Move up in batting lineup"
-                        >
-                          <ArrowUp className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          disabled={index === draftedPlayers.length - 1}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleMoveDown(index);
-                          }}
-                          className="p-1 rounded bg-white/5 hover:bg-amber-400/20 text-slate-400 hover:text-amber-300 disabled:opacity-20 border border-white/10 transition"
-                          title="Move down in batting lineup"
-                        >
-                          <ArrowDown className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            }
-
-            {/* Empty Slot Card matching 38-0 layout */}
-            return (
-              <div
-                key={`empty_${index}`}
-                className="p-4 rounded-2xl border-2 border-dashed border-white/15 bg-white/[0.02] backdrop-blur-sm flex flex-col justify-between gap-3 min-h-[140px] text-slate-500 shadow-sm"
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* View Switcher: Lineup Cards vs 2D Cricket Pitch */}
+            <div className="flex items-center p-1 rounded-xl bg-slate-900/90 border border-white/10 text-xs font-mono">
+              <button
+                onClick={() => setActiveView("CARDS")}
+                className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${
+                  activeView === "CARDS"
+                    ? "bg-amber-400 text-slate-950 shadow"
+                    : "text-slate-400 hover:text-white"
+                }`}
               >
-                <div className="flex items-center justify-between pb-2 border-b border-white/5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold text-slate-500">
-                      #{index + 1}
-                    </span>
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                      {positionInfo.title}
+                <span>📋 Cards</span>
+              </button>
+              <button
+                onClick={() => setActiveView("PITCH")}
+                className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${
+                  activeView === "PITCH"
+                    ? "bg-emerald-400 text-slate-950 shadow"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <span>🏟️ Pitch Field</span>
+              </button>
+            </div>
+
+            {draftedPlayers.length >= 2 && onReorderLineup && (
+              <button
+                onClick={handleAutoOrder}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 border border-amber-400/30 transition shadow-sm"
+                title="Automatically arrange batting order: Openers -> Middle Order -> Keepers -> All-Rounders -> Bowlers"
+              >
+                <Wand2 className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden sm:inline">Auto-Order</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* View Mode Switching: 2D Pitch Field vs 38-0 Drag Cards */}
+        {activeView === "PITCH" ? (
+          <CricketPitchView draftedPlayers={draftedPlayers} formation={formation} />
+        ) : (
+          /* 38-0 Style Starting XI Grid: Bigger, Card-Styled, Draggable */
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {Array.from({ length: 11 }).map((_, index) => {
+              const player = draftedPlayers[index];
+              const positionInfo = getBattingPositionLabel(index);
+              const isBeingDragged = draggedIndex === index;
+              const isHoveredTarget = dragOverIndex === index && draggedIndex !== index;
+
+              if (player) {
+                const styles = getRoleCardStyles(player.role);
+                const mismatch = getPlayerPositionMismatch(player, index);
+
+                return (
+                  <motion.div
+                    key={player.id}
+                    layout
+                    layoutId={player.id}
+                    transition={{ type: "spring", stiffness: 350, damping: 28 }}
+                    draggable={Boolean(onReorderLineup && draftedPlayers.length > 1)}
+                    onDragStart={(e) => handleDragStart(e as unknown as React.DragEvent<HTMLDivElement>, index)}
+                    onDragOver={(e) => handleDragOver(e as unknown as React.DragEvent<HTMLDivElement>, index)}
+                    onDragLeave={() => handleDragLeave(index)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      handleDrop(index);
+                    }}
+                    onDragEnd={handleDragEnd}
+                    className={`relative p-4 rounded-2xl bg-gradient-to-br ${styles.glow} border ${
+                      isHoveredTarget
+                        ? "ring-2 ring-amber-400 border-amber-400 bg-amber-400/20 scale-[1.02] shadow-xl shadow-amber-400/30 z-20"
+                        : isBeingDragged
+                        ? "opacity-35 scale-95 border-amber-400/60"
+                        : mismatch.isMismatch
+                        ? "border-red-500/50 shadow-red-500/10 shadow-lg"
+                        : `${styles.border} shadow-lg`
+                    } backdrop-blur-xl flex flex-col justify-between gap-3 group transition-all duration-150 cursor-grab active:cursor-grabbing select-none`}
+                  >
+                    {/* Card Header: Position Badge, Drag Grip, and Large 38-0 OVR */}
+                    <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="text-slate-400 group-hover:text-amber-400 transition cursor-grab active:cursor-grabbing"
+                          title="Drag to swap or move batting position"
+                        >
+                          <GripVertical className="w-4 h-4" />
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-mono font-black text-amber-400">
+                            #{index + 1}
+                          </span>
+                          <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${styles.tagText}`}>
+                            {positionInfo.title}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Big Bold 38-0 Style OVR */}
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-mono font-extrabold px-1.5 py-0.5 rounded border ${styles.badge}`}>
+                          {player.role}
+                        </span>
+                        <span className="text-2xl font-black font-mono tracking-tight text-white drop-shadow-md">
+                          {player.ovr}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Card Body: Large Player Name & Tournament Origins */}
+                    <div className="flex flex-col gap-1 my-0.5">
+                      <h5 className="text-base font-extrabold text-white tracking-wide truncate drop-shadow">
+                        {player.name}
+                      </h5>
+                      <div className="flex items-center gap-2 text-xs font-mono text-slate-300">
+                        <span className="font-semibold text-slate-200">
+                          {player.countryCode} ({player.editionYear})
+                        </span>
+                        <span>·</span>
+                        <span className="text-slate-400 text-[11px]">
+                          {player.battingStyle} · {player.bowlingType !== "NONE" ? player.bowlingType : "BAT"}
+                        </span>
+                      </div>
+
+                      {/* Out of position tactical mismatch warning */}
+                      {mismatch.isMismatch && (
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-red-500/20 border border-red-500/40 text-[10px] font-mono font-bold text-red-300 mt-1">
+                          <AlertTriangle className="w-3 h-3 text-red-400 flex-shrink-0" />
+                          <span className="truncate">{mismatch.message}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Card Footer: Sub-Rating Chips & Steppers */}
+                    <div className="flex items-center justify-between pt-2 border-t border-white/10 gap-2">
+                      {/* Mini Sub-Rating Stats (38-0 Style) */}
+                      <div className="flex items-center gap-2 text-[10px] font-mono">
+                        <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                          <span className="text-slate-400">BAT:</span>
+                          <span className="font-bold text-amber-300">
+                            {player.subRatings?.batting || player.ovr}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                          <span className="text-slate-400">BOWL:</span>
+                          <span className="font-bold text-emerald-300">
+                            {player.subRatings?.bowling || 40}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                          <span className="text-slate-400">CLUTCH:</span>
+                          <span className="font-bold text-purple-300">
+                            {player.subRatings?.clutch || 85}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Step Up / Down Buttons for Click Reordering */}
+                      {onReorderLineup && draftedPlayers.length > 1 && (
+                        <div className="flex items-center gap-1">
+                          <button
+                            disabled={index === 0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoveUp(index);
+                            }}
+                            className="p-1 rounded bg-white/5 hover:bg-amber-400/20 text-slate-400 hover:text-amber-300 disabled:opacity-20 border border-white/10 transition"
+                            title="Move up in batting lineup"
+                          >
+                            <ArrowUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            disabled={index === draftedPlayers.length - 1}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoveDown(index);
+                            }}
+                            className="p-1 rounded bg-white/5 hover:bg-amber-400/20 text-slate-400 hover:text-amber-300 disabled:opacity-20 border border-white/10 transition"
+                            title="Move down in batting lineup"
+                          >
+                            <ArrowDown className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              }
+
+              {/* Empty Slot Card matching 38-0 layout */}
+              return (
+                <div
+                  key={`empty_${index}`}
+                  className="p-4 rounded-2xl border-2 border-dashed border-white/15 bg-white/[0.02] backdrop-blur-sm flex flex-col justify-between gap-3 min-h-[140px] text-slate-500 shadow-sm"
+                >
+                  <div className="flex items-center justify-between pb-2 border-b border-white/5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono font-bold text-slate-500">
+                        #{index + 1}
+                      </span>
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+                        {positionInfo.title}
+                      </span>
+                    </div>
+                    <span className="text-xs font-mono text-slate-600 font-bold">
+                      UNFILLED
                     </span>
                   </div>
-                  <span className="text-xs font-mono text-slate-600 font-bold">
-                    UNFILLED
-                  </span>
-                </div>
 
-                <div className="flex flex-col items-center justify-center py-2 text-center">
-                  <span className="text-xs font-mono text-slate-300 font-medium">
-                    {getSlotRoleLabel(index)}
-                  </span>
-                  <span className="text-[10px] font-mono text-slate-500 mt-0.5">
-                    Spun from tournament wheel
-                  </span>
-                </div>
+                  <div className="flex flex-col items-center justify-center py-2 text-center">
+                    <span className="text-xs font-mono text-slate-300 font-medium">
+                      {getSlotRoleLabel(index)}
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-500 mt-0.5">
+                      Spun from tournament wheel
+                    </span>
+                  </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[10px] font-mono text-slate-600">
-                  <span>Slot #{index + 1}</span>
-                  <span className="text-slate-600 font-bold">-- OVR</span>
+                  <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[10px] font-mono text-slate-600">
+                    <span>Slot #{index + 1}</span>
+                    <span className="text-slate-600 font-bold">-- OVR</span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
