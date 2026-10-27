@@ -125,6 +125,7 @@ export function autoOptimizeBattingLineup(
 
 /**
  * Contextual labels for each batting position in the 11-player lineup.
+ * Describes the batting position slot rather than hardcoding a player role.
  *
  * @param index - 0-indexed batting order position.
  * @returns Descriptive label and category.
@@ -132,28 +133,74 @@ export function autoOptimizeBattingLineup(
 export function getBattingPositionLabel(index: number): { title: string; category: string } {
   switch (index) {
     case 0:
-      return { title: "Opener", category: "Top Order" };
+      return { title: "Opener (#1)", category: "Top Order" };
     case 1:
-      return { title: "Opener", category: "Top Order" };
+      return { title: "Opener (#2)", category: "Top Order" };
     case 2:
       return { title: "No. 3 Anchor", category: "Top Order" };
     case 3:
-      return { title: "Middle Order", category: "Middle Order" };
+      return { title: "Middle Order (#4)", category: "Middle Order" };
     case 4:
-      return { title: "Middle Order", category: "Middle Order" };
+      return { title: "Middle Order (#5)", category: "Middle Order" };
     case 5:
-      return { title: "Wicketkeeper / Finisher", category: "Middle Order" };
+      return { title: "Finisher (#6)", category: "Middle Order" };
     case 6:
-      return { title: "All-Rounder", category: "Lower Order" };
+      return { title: "Lower Order (#7)", category: "Lower Order" };
     case 7:
-      return { title: "Bowling All-Rounder", category: "Lower Order" };
+      return { title: "Lower Order (#8)", category: "Lower Order" };
     case 8:
-      return { title: "Specialist Bowler", category: "Tail" };
+      return { title: "Tail (#9)", category: "Tail" };
     case 9:
-      return { title: "Specialist Bowler", category: "Tail" };
+      return { title: "Tail (#10)", category: "Tail" };
     case 10:
-      return { title: "No. 11 Bowler", category: "Tail" };
+      return { title: "Tail (#11)", category: "Tail" };
     default:
       return { title: `Position #${index + 1}`, category: "Bench" };
   }
 }
+
+/**
+ * Evaluates whether a player is severely out of position in the batting lineup.
+ * Flags tailenders opening or star batters stranded at #10/#11.
+ *
+ * @param player - Player edition record.
+ * @param index - Lineup slot index (0 to 10).
+ * @returns Mismatch diagnostic.
+ */
+export interface PositionMismatch {
+  isMismatch: boolean;
+  type?: "TAILENDER_OPENING" | "BATTER_STRANDED";
+  severity?: "HIGH" | "MEDIUM";
+  message?: string;
+}
+
+export function getPlayerPositionMismatch(
+  player: PlayerEditionRecord,
+  index: number
+): PositionMismatch {
+  const isBowler = player.role === "BOWL";
+  const battingSkill = player.subRatings?.batting ?? player.ovr;
+
+  // Specialist bowler or weak batter placed in top 4 (#1 to #4)
+  if ((isBowler || battingSkill < 60) && index <= 3) {
+    return {
+      isMismatch: true,
+      type: "TAILENDER_OPENING",
+      severity: index <= 1 ? "HIGH" : "MEDIUM",
+      message: index <= 1 ? "Tailender Opening (Collapse Risk)" : "Bowler in Top 4",
+    };
+  }
+
+  // Elite batsman stranded in the tail (#9, #10, #11)
+  if (player.role === "BAT" && battingSkill >= 80 && index >= 8) {
+    return {
+      isMismatch: true,
+      type: "BATTER_STRANDED",
+      severity: "HIGH",
+      message: "Star Batter Stranded in Tail",
+    };
+  }
+
+  return { isMismatch: false };
+}
+

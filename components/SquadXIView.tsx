@@ -20,6 +20,7 @@ import {
   reorderBattingLineup,
   autoOptimizeBattingLineup,
   getBattingPositionLabel,
+  getPlayerPositionMismatch,
 } from "../engine/lineup";
 import { PlayerEditionRecord, TacticalFormation, PlayerRole } from "../types/cricket";
 
@@ -179,6 +180,11 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({
           <span className="text-3xl font-black font-mono text-amber-400 mt-1">
             {squad.teamBattingOvr || "--"}
           </span>
+          {squad.lineupSynergy !== undefined && squad.lineupSynergy < 100 && draftedPlayers.length >= 8 && (
+            <span className="text-[10px] font-mono font-bold text-red-400 mt-1">
+              ⚠ Inverted Order ({squad.lineupSynergy}% Synergy)
+            </span>
+          )}
         </div>
 
         <div className="p-4 rounded-2xl bg-slate-900/70 border border-white/10 backdrop-blur-xl flex flex-col items-center justify-center text-center shadow-lg">
@@ -279,6 +285,25 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({
         )}
       </div>
 
+      {/* Tactical Lineup Imbalance Warning Banner */}
+      {squad.lineupWarnings && squad.lineupWarnings.length > 0 && draftedPlayers.length >= 8 && (
+        <div className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/30 flex flex-col gap-1.5 shadow-md">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-xs font-mono font-bold text-red-300">
+              <AlertTriangle className="w-4 h-4 text-red-400" />
+              TACTICAL LINEUP IMBALANCE ({squad.lineupWarnings.length} ISSUES)
+            </span>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-red-500/20 text-red-200 border border-red-500/30">
+              Synergy: {squad.lineupSynergy}%
+            </span>
+          </div>
+          <p className="text-[11px] font-mono text-red-200/80 leading-relaxed">
+            Tailenders in the top order trigger early Powerplay collapses, and star batters down at #10/#11 face almost no deliveries.
+            Drag players into proper positions or click <strong>Auto-Order Lineup</strong>.
+          </p>
+        </div>
+      )}
+
       {/* Starting XI Batting Order & Lineup Positions */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-1">
@@ -318,6 +343,7 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({
 
             if (player) {
               const styles = getRoleCardStyles(player.role);
+              const mismatch = getPlayerPositionMismatch(player, index);
 
               return (
                 <motion.div
@@ -339,6 +365,8 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({
                       ? "ring-2 ring-amber-400 border-amber-400 bg-amber-400/20 scale-[1.02] shadow-xl shadow-amber-400/30 z-20"
                       : isBeingDragged
                       ? "opacity-35 scale-95 border-amber-400/60"
+                      : mismatch.isMismatch
+                      ? "border-red-500/50 shadow-red-500/10 shadow-lg"
                       : `${styles.border} shadow-lg`
                   } backdrop-blur-xl flex flex-col justify-between gap-3 group transition-all duration-150 cursor-grab active:cursor-grabbing select-none`}
                 >
@@ -374,7 +402,7 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({
                   </div>
 
                   {/* Card Body: Large Player Name & Tournament Origins */}
-                  <div className="flex flex-col gap-0.5 my-0.5">
+                  <div className="flex flex-col gap-1 my-0.5">
                     <h5 className="text-base font-extrabold text-white tracking-wide truncate drop-shadow">
                       {player.name}
                     </h5>
@@ -387,6 +415,14 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({
                         {player.battingStyle} · {player.bowlingType !== "NONE" ? player.bowlingType : "BAT"}
                       </span>
                     </div>
+
+                    {/* Out of position tactical mismatch warning */}
+                    {mismatch.isMismatch && (
+                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-red-500/20 border border-red-500/40 text-[10px] font-mono font-bold text-red-300 mt-1">
+                        <AlertTriangle className="w-3 h-3 text-red-400 flex-shrink-0" />
+                        <span className="truncate">{mismatch.message}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Card Footer: Sub-Rating Chips & Steppers */}

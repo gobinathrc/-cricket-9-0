@@ -95,4 +95,40 @@ describe("T20 Match Simulator Engine (9-0 Championship Path & Strict Quotas)", (
     expect(WORLD_CUP_SCHEDULE[8].stageName).toBe("THE FINAL");
     expect(WORLD_CUP_SCHEDULE[8].difficultyTier).toBe("CHAMPION");
   });
+
+  it("calculates batting index dynamically based on lineup order and penalizes bowlers opening", () => {
+    // Correctly ordered squad: Batters #1-#4, Keepers/AR #5-#7, Bowlers #8-#11
+    const optimalLineup = [...validTacticalSquad];
+    const optimalEvaluation = evaluateSquadTactics(optimalLineup);
+
+    // Inverted/upside-down squad: Bowlers #1-#4, Batters #8-#11 (matching user bug report)
+    const upsideDownLineup = [
+      validTacticalSquad[7], // Bowler at #1 (batting 55)
+      validTacticalSquad[8], // Bowler at #2 (batting 55)
+      validTacticalSquad[9], // Bowler at #3 (batting 55)
+      validTacticalSquad[10], // Bowler at #4 (batting 55)
+      validTacticalSquad[5], // AR at #5
+      validTacticalSquad[6], // AR at #6
+      validTacticalSquad[0], // WK at #7
+      validTacticalSquad[1], // BAT at #8 (batting 92 stranded)
+      validTacticalSquad[2], // BAT at #9 (batting 88 stranded)
+      validTacticalSquad[3], // BAT at #10 (batting 86 stranded)
+      validTacticalSquad[4], // BAT at #11 (batting 84 stranded)
+    ];
+    const upsideDownEvaluation = evaluateSquadTactics(upsideDownLineup);
+
+    // The upside-down squad must have a drastically lower teamBattingOvr than optimal
+    expect(upsideDownEvaluation.teamBattingOvr).toBeLessThan(optimalEvaluation.teamBattingOvr - 15);
+
+    // Against an elite opponent (e.g. Australia in Match 7), upside-down squad should lose consistently
+    const eliteOpponent = WORLD_CUP_SCHEDULE[6]; // Australia (Bat: 89, Bowl: 89)
+    let upsideDownLosses = 0;
+    for (let sim = 0; sim < 20; sim++) {
+      const match = simulateFixture(upsideDownEvaluation, eliteOpponent, 7);
+      if (!match.userWon) upsideDownLosses++;
+    }
+
+    // Must lose at least 15 out of 20 matches (>= 75% loss rate for upside-down squad)
+    expect(upsideDownLosses).toBeGreaterThanOrEqual(15);
+  });
 });

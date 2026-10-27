@@ -104,6 +104,8 @@ export interface DraftedSquad {
   teamBattingOvr: number;
   teamBowlingOvr: number;
   averageOvr: number;
+  lineupSynergy?: number; // 0 to 100 tactical alignment score
+  lineupWarnings?: string[]; // Out-of-position warnings
 }
 
 /**

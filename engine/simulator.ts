@@ -182,10 +182,73 @@ export function evaluateSquadTactics(
 
   const isBalancedAttack = spinnerCount >= 1 && pacerCount >= 2;
 
-  const topBatters = [...players].sort((a, b) => b.subRatings.batting - a.subRatings.batting).slice(0, 7);
-  const teamBattingOvr = Math.round(
-    topBatters.reduce((acc, curr) => acc + curr.subRatings.batting, 0) / Math.max(1, topBatters.length)
+  // --- Position-Weighted Batting Index & Out-of-Position Penalties ---
+  // In T20 cricket, top order positions (#1-#4) face ~75% of all deliveries.
+  // Stranding top batters at #10/#11 or opening with tailenders causes catastrophic Powerplay collapses.
+  const BATTING_POSITION_WEIGHTS = [
+    0.22, // Pos 0 (#1 Opener)
+    0.22, // Pos 1 (#2 Opener)
+    0.18, // Pos 2 (#3 First Drop / Anchor)
+    0.14, // Pos 3 (#4 Middle Order)
+    0.10, // Pos 4 (#5 Middle Order)
+    0.06, // Pos 5 (#6 Finisher)
+    0.04, // Pos 6 (#7 Lower Order / AR)
+    0.02, // Pos 7 (#8 Lower Order)
+    0.01, // Pos 8 (#9 Tail)
+    0.005, // Pos 9 (#10 Tail)
+    0.005, // Pos 10 (#11 Tail)
+  ];
+
+  let rawBattingIndex = 0;
+  let totalWeight = 0;
+  const lineupWarnings: string[] = [];
+  let outOfPositionPenalty = 0;
+
+  if (players.length < 11) {
+    // During drafting rounds: unweighted average of available drafted players
+    const sumBatting = players.reduce(
+      (acc, curr) => acc + (curr.subRatings?.batting ?? curr.ovr),
+      0
+    );
+    rawBattingIndex = Math.round(sumBatting / Math.max(1, players.length));
+  } else {
+    // Full 11-player lineup: Position-weighted calculation based on exact batting order
+    players.forEach((player, idx) => {
+      const weight = BATTING_POSITION_WEIGHTS[idx] ?? 0.005;
+      const battingSkill = player.subRatings?.batting ?? player.ovr;
+      rawBattingIndex += battingSkill * weight;
+      totalWeight += weight;
+
+      // Severe penalty if pure bowler is placed in top 4 (#1 to #4)
+      if (player.role === "BOWL" && idx <= 3) {
+        const severity = idx <= 1 ? 8 : 5;
+        outOfPositionPenalty += severity;
+        lineupWarnings.push(
+          `${player.name} (#${idx + 1}) is a bowler in the top order (-${severity} collapse penalty)`
+        );
+      }
+
+      // Penalty if specialist batsman is stranded in the tail (#9 to #11)
+      if (player.role === "BAT" && battingSkill >= 80 && idx >= 8) {
+        const severity = 4;
+        outOfPositionPenalty += severity;
+        lineupWarnings.push(
+          `${player.name} (#${idx + 1}) is a star batsman stranded in the tail`
+        );
+      }
+    });
+
+    if (totalWeight > 0) {
+      rawBattingIndex = rawBattingIndex / totalWeight;
+    }
+  }
+
+  const teamBattingOvr = Math.max(
+    50,
+    Math.min(99, Math.round(rawBattingIndex - outOfPositionPenalty))
   );
+
+  const lineupSynergy = Math.max(30, Math.min(100, Math.round(100 - outOfPositionPenalty * 2.5)));
 
   const topBowlers = [...players].sort((a, b) => b.subRatings.bowling - a.subRatings.bowling).slice(0, 5);
   const teamBowlingOvr = Math.round(
@@ -211,6 +274,8 @@ export function evaluateSquadTactics(
     teamBattingOvr,
     teamBowlingOvr,
     averageOvr,
+    lineupSynergy,
+    lineupWarnings,
   };
 }
 
@@ -246,6 +311,11 @@ export function simulateFixture(
     effectiveUserBowling -= 6;
   }
 
+  // Count how many bowlers / weak batsmen are placed in the critical top 3 positions
+  const bowlersInTopOrder = squad.players
+    .slice(0, 3)
+    .filter((p) => p.role === "BOWL" || (p.subRatings?.batting ?? p.ovr) < 60).length;
+
   // Coin Toss: 50% user bats first, 50% opponent bats first
   const userBatsFirst = Math.random() >= 0.5;
 
@@ -263,11 +333,13 @@ export function simulateFixture(
   if (userBatsFirst) {
     // --- User 1st Innings (Setting Target) ---
     const batDelta = squad.teamBattingOvr - opponent.bowlingOvr;
-    const base1stRuns = 162 + batDelta * 1.8;
+    const base1stRuns = 162 + batDelta * 1.8 - bowlersInTopOrder * 10;
     const variance1st = (Math.random() - 0.5) * 26;
-    userRuns = Math.round(Math.max(115, Math.min(230, base1stRuns + variance1st)));
-    userWickets = Math.round(Math.max(2, Math.min(10, 5.2 - batDelta * 0.12 + (Math.random() - 0.5) * 4)));
-    userOvers = userWickets === 10 ? Math.round((16 + Math.random() * 3.5) * 10) / 10 : 20;
+    userRuns = Math.round(Math.max(90, Math.min(230, base1stRuns + variance1st)));
+    userWickets = Math.round(
+      Math.max(2, Math.min(10, 5.2 - batDelta * 0.12 + bowlersInTopOrder * 1.5 + (Math.random() - 0.5) * 4))
+    );
+    userOvers = userWickets === 10 ? Math.round((14 + Math.random() * 4.5) * 10) / 10 : 20;
 
     const target = userRuns + 1;
 
@@ -281,7 +353,7 @@ export function simulateFixture(
       oppWickets = Math.round(Math.max(2, Math.min(9, 4.5 - oppChaseDelta * 0.1 + (Math.random() - 0.5) * 3)));
       const extra = Math.floor(Math.random() * 4);
       oppRuns = target + extra;
-      const ballsLeft = Math.round(Math.max(1, Math.min(18, chaseStrength * 0.6 + Math.random() * 6)));
+      const ballsLeft = Math.round(Math.max(1, Math.min(24, chaseStrength * 0.6 + Math.random() * 6)));
       const oversBowled = (120 - ballsLeft) / 6;
       oppOvers = Math.round(oversBowled * 10) / 10;
       margin = `Lost by ${10 - oppWickets} wickets (${ballsLeft} balls left)`;
@@ -289,7 +361,7 @@ export function simulateFixture(
       // Opponent fails to chase target
       userWon = true;
       const oppDeficit = Math.round(Math.max(2, Math.min(65, -chaseStrength + Math.random() * 10)));
-      oppRuns = Math.max(95, userRuns - oppDeficit);
+      oppRuns = Math.max(90, userRuns - oppDeficit);
       oppWickets = Math.random() > 0.4 ? 10 : Math.round(Math.max(5, Math.min(9, 7.0 - oppChaseDelta * 0.1)));
       oppOvers = oppWickets === 10 ? Math.round((16 + Math.random() * 3.5) * 10) / 10 : 20;
       margin = `Won by ${userRuns - oppRuns} runs`;
@@ -307,12 +379,15 @@ export function simulateFixture(
 
     // --- User 2nd Innings (Chasing Target) ---
     const userChaseDelta = squad.teamBattingOvr - opponent.bowlingOvr;
-    const chaseStrength = userChaseDelta * 1.5 - (oppRuns - 160) * 0.4 + (Math.random() - 0.5) * 22;
+    const chaseStrength =
+      userChaseDelta * 1.5 - (oppRuns - 160) * 0.4 - bowlersInTopOrder * 8 + (Math.random() - 0.5) * 22;
 
     if (chaseStrength > 0) {
       // User successfully chases target
       userWon = true;
-      userWickets = Math.round(Math.max(2, Math.min(9, 4.5 - userChaseDelta * 0.1 + (Math.random() - 0.5) * 3)));
+      userWickets = Math.round(
+        Math.max(2, Math.min(9, 4.5 - userChaseDelta * 0.1 + bowlersInTopOrder * 1.2 + (Math.random() - 0.5) * 3))
+      );
       const extra = Math.floor(Math.random() * 4);
       userRuns = target + extra;
       const ballsLeft = Math.round(Math.max(1, Math.min(18, chaseStrength * 0.6 + Math.random() * 6)));
@@ -323,9 +398,12 @@ export function simulateFixture(
       // User fails to chase target
       userWon = false;
       const userDeficit = Math.round(Math.max(2, Math.min(65, -chaseStrength + Math.random() * 10)));
-      userRuns = Math.max(95, oppRuns - userDeficit);
-      userWickets = Math.random() > 0.4 ? 10 : Math.round(Math.max(5, Math.min(9, 7.0 - userChaseDelta * 0.1)));
-      userOvers = userWickets === 10 ? Math.round((16 + Math.random() * 3.5) * 10) / 10 : 20;
+      userRuns = Math.max(80, oppRuns - userDeficit);
+      userWickets =
+        bowlersInTopOrder > 0 || Math.random() > 0.35
+          ? 10
+          : Math.round(Math.max(6, Math.min(9, 7.0 - userChaseDelta * 0.1 + bowlersInTopOrder)));
+      userOvers = userWickets === 10 ? Math.round((14 + Math.random() * 4.5) * 10) / 10 : 20;
       margin = `Lost by ${oppRuns - userRuns} runs`;
     }
   }
