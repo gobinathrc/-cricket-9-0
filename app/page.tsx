@@ -200,8 +200,8 @@ export default function HomePage() {
           </div>
 
           <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Left 7 Cols: Draft Wheel & Pick Selector */}
-            <div className={`lg:col-span-7 flex flex-col ${activeTab === "DRAFT" ? "block" : "hidden sm:block"}`}>
+            {/* Left 6 Cols: Draft Wheel & Pick Selector */}
+            <div className={`lg:col-span-6 flex flex-col ${activeTab === "DRAFT" ? "block" : "hidden sm:block"}`}>
               <DraftWheel
                 session={session}
                 onSpin={handleSpin}
@@ -211,8 +211,8 @@ export default function HomePage() {
               />
             </div>
 
-            {/* Right 5 Cols: Live XI Formation & Tactics */}
-            <div className={`lg:col-span-5 flex flex-col ${activeTab === "SQUAD" ? "block" : "hidden sm:block"}`}>
+            {/* Right 6 Cols: Live XI Formation & Drag-and-Drop Tactics (38-0 Look) */}
+            <div className={`lg:col-span-6 flex flex-col ${activeTab === "SQUAD" ? "block" : "hidden sm:block"}`}>
               <SquadXIView
                 draftedPlayers={session.draftedPlayers}
                 formation={session.formation}
@@ -230,7 +230,7 @@ export default function HomePage() {
           </div>
 
           <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            <div className="lg:col-span-8">
+            <div className="lg:col-span-6">
               <GauntletRunner
                 draftedPlayers={session.draftedPlayers}
                 formation={session.formation}
@@ -238,7 +238,7 @@ export default function HomePage() {
               />
             </div>
 
-            <div className="lg:col-span-4">
+            <div className="lg:col-span-6">
               <SquadXIView
                 draftedPlayers={session.draftedPlayers}
                 formation={session.formation}

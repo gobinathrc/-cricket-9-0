@@ -110,6 +110,23 @@ describe("Role Gating & Batting Lineup Position Management", () => {
       expect(unchangedBottom[1].id).toBe("p2");
     });
 
+    it("supports drag and drop reordering across arbitrary distant slots", () => {
+      const fullLineup = Array.from({ length: 11 }, (_, i) =>
+        dummy(`player_${i + 1}`, i < 4 ? "BAT" : i === 4 ? "WK" : i < 7 ? "AR" : "BOWL")
+      );
+
+      // Drag player #11 (index 10) to #1 Opener (index 0)
+      const movedToOpener = reorderBattingLineup(fullLineup, 10, 0);
+      expect(movedToOpener[0].id).toBe("player_11");
+      expect(movedToOpener[1].id).toBe("player_1");
+      expect(movedToOpener.length).toBe(11);
+
+      // Drag player #2 (index 1) to #7 Finisher (index 6)
+      const movedToFinisher = reorderBattingLineup(fullLineup, 1, 6);
+      expect(movedToFinisher[6].id).toBe("player_2");
+      expect(movedToFinisher.length).toBe(11);
+    });
+
     it("automatically optimizes batting lineup by role and batting sub-ratings", () => {
       const disordered = [
         dummy("bowl1", "BOWL", 40),

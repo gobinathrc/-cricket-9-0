@@ -54,4 +54,21 @@ describe("11-Round Drafting Engine", () => {
     expect(session.isComplete).toBe(true);
     expect(session.draftedPlayers.length).toBe(11);
   });
+
+  it("includes diverse tournament squads beyond champions and runners-up", () => {
+    // Verifies the database includes semi-finalists and breakout squads
+    const squadNames = ALL_TOURNAMENT_SQUADS.map((s) => s.teamName);
+    const hasSemiFinalists = squadNames.some((name) =>
+      name.toLowerCase().includes("semi-finalist")
+    );
+    const hasGiantslayersOrBreakout = squadNames.some(
+      (name) =>
+        name.toLowerCase().includes("giantslayer") ||
+        name.toLowerCase().includes("breakout")
+    );
+
+    expect(hasSemiFinalists).toBe(true);
+    expect(hasGiantslayersOrBreakout).toBe(true);
+    expect(ALL_TOURNAMENT_SQUADS.length).toBeGreaterThanOrEqual(14);
+  });
 });
