@@ -1,27 +1,52 @@
 "use client";
 
 import React from "react";
-import { CheckCircle2, AlertTriangle, ShieldCheck, Zap } from "lucide-react";
+import { CheckCircle2, AlertTriangle, ArrowUp, ArrowDown, Wand2, Shield } from "lucide-react";
 import { evaluateSquadTactics } from "../engine/simulator";
 import { DEFAULT_FORMATION } from "../data/formations";
+import {
+  reorderBattingLineup,
+  autoOptimizeBattingLineup,
+  getBattingPositionLabel,
+} from "../engine/lineup";
 import { PlayerEditionRecord, TacticalFormation } from "../types/cricket";
 
 interface SquadXIViewProps {
   draftedPlayers: PlayerEditionRecord[];
   formation?: TacticalFormation;
+  onReorderLineup?: (updatedPlayers: PlayerEditionRecord[]) => void;
 }
 
 /**
  * Tactical Starting XI dashboard displaying player cards, roles, and strict composition checklist.
- * Validates against the chosen TacticalFormation (default: Standard Balanced 1-4-2-4).
+ * Enables live moving/reordering of batting positions (#1 to #11) and smart auto-ordering.
  *
  * @param props - SquadXIViewProps
  */
 export const SquadXIView: React.FC<SquadXIViewProps> = ({
   draftedPlayers,
   formation = DEFAULT_FORMATION,
+  onReorderLineup,
 }) => {
   const squad = evaluateSquadTactics(draftedPlayers, formation);
+
+  const handleMoveUp = (index: number) => {
+    if (index <= 0 || !onReorderLineup) return;
+    const reordered = reorderBattingLineup(draftedPlayers, index, index - 1);
+    onReorderLineup(reordered);
+  };
+
+  const handleMoveDown = (index: number) => {
+    if (index >= draftedPlayers.length - 1 || !onReorderLineup) return;
+    const reordered = reorderBattingLineup(draftedPlayers, index, index + 1);
+    onReorderLineup(reordered);
+  };
+
+  const handleAutoOrder = () => {
+    if (!onReorderLineup || draftedPlayers.length === 0) return;
+    const optimized = autoOptimizeBattingLineup(draftedPlayers);
+    onReorderLineup(optimized);
+  };
 
   /**
    * Derives contextual slot descriptions matching the chosen formation layout.
@@ -125,37 +150,84 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({
         )}
       </div>
 
-      {/* Starting XI Roster Slots */}
+      {/* Starting XI Batting Order & Lineup Positions */}
       <div className="flex flex-col gap-2">
-        <h4 className="text-sm font-semibold uppercase tracking-wider font-mono text-slate-400 px-1">
-          Starting XI Roster ({draftedPlayers.length}/11) · {squad.formation.name}
-        </h4>
+        <div className="flex items-center justify-between px-1">
+          <h4 className="text-sm font-semibold uppercase tracking-wider font-mono text-slate-300">
+            Batting Order ({draftedPlayers.length}/11)
+          </h4>
+
+          {draftedPlayers.length >= 2 && onReorderLineup && (
+            <button
+              onClick={handleAutoOrder}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 border border-amber-400/30 transition shadow-sm"
+              title="Automatically arrange batting order: Openers -> Middle Order -> Wicketkeeper -> All-Rounders -> Bowlers"
+            >
+              <Wand2 className="w-3 h-3 text-amber-400" />
+              <span>Auto-Order Lineup</span>
+            </button>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
           {Array.from({ length: 11 }).map((_, index) => {
             const player = draftedPlayers[index];
+            const positionInfo = getBattingPositionLabel(index);
 
             if (player) {
               return (
                 <div
                   key={player.id}
-                  className="p-3 rounded-xl bg-slate-900/80 border border-white/10 flex items-center justify-between backdrop-blur-md shadow"
+                  className="p-3 rounded-xl bg-slate-900/80 border border-white/10 flex items-center justify-between backdrop-blur-md shadow group hover:border-white/20 transition"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-mono font-bold text-slate-500 w-4">
-                      #{index + 1}
-                    </span>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-semibold text-white">
-                        {player.name}
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {/* Batting Position Number & Up/Down Stepper */}
+                    <div className="flex flex-col items-center justify-center">
+                      {onReorderLineup && draftedPlayers.length > 1 && (
+                        <button
+                          disabled={index === 0}
+                          onClick={() => handleMoveUp(index)}
+                          className="text-slate-500 hover:text-amber-400 disabled:opacity-20 transition leading-none p-0.5"
+                          title="Move Up in Batting Order"
+                        >
+                          <ArrowUp className="w-3 h-3" />
+                        </button>
+                      )}
+                      <span className="text-xs font-mono font-black text-amber-400 leading-none">
+                        #{index + 1}
                       </span>
-                      <span className="text-[11px] font-mono text-slate-400">
-                        {player.countryCode} · {player.role} ({player.editionYear})
-                      </span>
+                      {onReorderLineup && draftedPlayers.length > 1 && (
+                        <button
+                          disabled={index === draftedPlayers.length - 1}
+                          onClick={() => handleMoveDown(index)}
+                          className="text-slate-500 hover:text-amber-400 disabled:opacity-20 transition leading-none p-0.5"
+                          title="Move Down in Batting Order"
+                        >
+                          <ArrowDown className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-semibold text-white truncate">
+                          {player.name}
+                        </span>
+                        <span className="text-[9px] font-mono font-bold px-1 py-0.2 rounded bg-white/10 text-slate-300">
+                          {player.role}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400">
+                        <span className="text-amber-400/90 font-medium">
+                          {positionInfo.title}
+                        </span>
+                        <span>·</span>
+                        <span>{player.countryCode} ({player.editionYear})</span>
+                      </div>
                     </div>
                   </div>
 
-                  <span className="px-2.5 py-1 rounded-lg text-sm font-black font-mono bg-white/10 text-amber-300 border border-white/10">
+                  <span className="px-2 py-1 rounded-lg text-sm font-black font-mono bg-white/10 text-amber-300 border border-white/10 flex-shrink-0">
                     {player.ovr}
                   </span>
                 </div>
@@ -167,11 +239,18 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({
                 key={`empty_${index}`}
                 className="p-3 rounded-xl border border-dashed border-white/10 bg-white/[0.02] flex items-center justify-between text-slate-600"
               >
-                <span className="text-xs font-mono font-bold w-4">#{index + 1}</span>
-                <span className="text-xs font-mono">
-                  {getSlotRoleLabel(index)}
-                </span>
-                <span className="text-xs font-mono">--</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-bold w-4">#{index + 1}</span>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-mono text-slate-400">
+                      {positionInfo.title}
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-600">
+                      {getSlotRoleLabel(index)}
+                    </span>
+                  </div>
+                </div>
+                <span className="text-xs font-mono text-slate-700">--</span>
               </div>
             );
           })}

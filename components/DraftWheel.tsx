@@ -2,8 +2,9 @@
 
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Disc, Sparkles, Trophy, ArrowRight, Filter } from "lucide-react";
+import { Disc, Sparkles, Trophy, ArrowRight, Filter, Shuffle } from "lucide-react";
 import { DraftSessionState } from "../engine/draft";
+import { isRoleGateClosed, getRoleGateQuota } from "../engine/lineup";
 import { PlayerEditionRecord, PlayerRole } from "../types/cricket";
 import { PlayerPickCard } from "./PlayerPickCard";
 
@@ -11,12 +12,13 @@ interface DraftWheelProps {
   session: DraftSessionState;
   onSpin: () => Promise<void> | void;
   onSelectPick: (player: PlayerEditionRecord) => Promise<void> | void;
+  onAutoDraft?: () => Promise<void> | void;
   isLoading?: boolean;
 }
 
 /**
  * Interactive drafting wheel and player selector for the 11-round session.
- * Features role filtering and display of the entire 15+ player squad (starters and bench).
+ * Features strict role gating (disabling roles once quota is reached) and full 15-player squad browsing.
  *
  * @param props - DraftWheelProps
  */
@@ -24,6 +26,7 @@ export const DraftWheel: React.FC<DraftWheelProps> = ({
   session,
   onSpin,
   onSelectPick,
+  onAutoDraft,
   isLoading = false,
 }) => {
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerEditionRecord | null>(null);
@@ -41,6 +44,17 @@ export const DraftWheel: React.FC<DraftWheelProps> = ({
     await onSelectPick(selectedPlayer);
     setSelectedPlayer(null);
     setRoleFilter("ALL");
+  };
+
+  const handleRandomSquadPick = () => {
+    if (!session.activeSquad) return;
+    const eligible = session.activeSquad.roster.filter(
+      (p) => !isRoleGateClosed(p.role, session.draftedPlayers)
+    );
+    if (eligible.length > 0) {
+      const random = eligible[Math.floor(Math.random() * eligible.length)];
+      setSelectedPlayer(random);
+    }
   };
 
   const filteredRoster = session.activeSquad
@@ -98,14 +112,28 @@ export const DraftWheel: React.FC<DraftWheelProps> = ({
             Spin the tournament wheel to unlock a random World Cup squad and draft 1 player into your XI.
           </p>
 
-          <button
-            onClick={handleSpinClick}
-            disabled={isLoading}
-            className="px-8 py-4 rounded-xl font-bold text-base bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 shadow-lg shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center gap-2 disabled:opacity-60"
-          >
-            <Sparkles className="w-5 h-5" />
-            {isLoading ? "Spinning Reel..." : "SPIN FOR SQUAD"}
-          </button>
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            <button
+              onClick={handleSpinClick}
+              disabled={isLoading}
+              className="px-8 py-4 rounded-xl font-bold text-base bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 shadow-lg shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center gap-2 disabled:opacity-60"
+            >
+              <Sparkles className="w-5 h-5" />
+              {isLoading ? "Spinning Reel..." : "SPIN FOR SQUAD"}
+            </button>
+
+            {onAutoDraft && session.draftedPlayers.length === 0 && (
+              <button
+                onClick={onAutoDraft}
+                disabled={isLoading}
+                className="px-5 py-4 rounded-xl font-bold text-xs font-mono bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10 hover:border-amber-400/40 transition-all flex items-center gap-2"
+                title="Automatically draft a randomized 11-player squad across historical editions"
+              >
+                <Shuffle className="w-4 h-4 text-amber-400" />
+                RANDOM TEAM
+              </button>
+            )}
+          </div>
         </motion.div>
       ) : (
         /* Active Squad Drawn - Pick Selection */
@@ -132,9 +160,19 @@ export const DraftWheel: React.FC<DraftWheelProps> = ({
               </div>
             </div>
 
-            <span className="px-3 py-1 rounded-lg text-xs font-mono font-bold bg-white/10 text-slate-300 border border-white/10">
-              {session.activeSquad.editionYear}
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleRandomSquadPick}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono bg-white/5 hover:bg-white/10 text-amber-300 border border-white/10 transition"
+                title="Pick random available player"
+              >
+                <Shuffle className="w-3 h-3" />
+                <span className="hidden sm:inline">Random Pick</span>
+              </button>
+              <span className="px-3 py-1 rounded-lg text-xs font-mono font-bold bg-white/10 text-slate-300 border border-white/10">
+                {session.activeSquad.editionYear}
+              </span>
+            </div>
           </div>
 
           {/* Quick Role Filter Tabs */}
@@ -162,14 +200,23 @@ export const DraftWheel: React.FC<DraftWheelProps> = ({
 
           {/* Full Squad Roster Grid (Including Starters and Bench) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[380px] overflow-y-auto pr-1">
-            {filteredRoster.map((player) => (
-              <PlayerPickCard
-                key={player.id}
-                player={player}
-                isSelected={selectedPlayer?.id === player.id}
-                onSelect={(p) => setSelectedPlayer(p)}
-              />
-            ))}
+            {filteredRoster.map((player) => {
+              const isGated = isRoleGateClosed(player.role, session.draftedPlayers);
+              const quota = getRoleGateQuota(player.role, session.draftedPlayers);
+
+              return (
+                <PlayerPickCard
+                  key={player.id}
+                  player={player}
+                  isSelected={selectedPlayer?.id === player.id}
+                  isDisabled={isGated}
+                  disabledReason={`Quota Met (${quota.max}/${quota.max})`}
+                  onSelect={(p) => {
+                    if (!isGated) setSelectedPlayer(p);
+                  }}
+                />
+              );
+            })}
           </div>
 
           {/* Confirm Pick Button */}

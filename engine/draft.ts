@@ -1,5 +1,6 @@
 import { PlayerEditionRecord, TacticalFormation, TournamentSquad } from "../types/cricket";
 import { DEFAULT_FORMATION } from "../data/formations";
+import { isRoleGateClosed } from "./lineup";
 import { logInfo, logWarn } from "../utils/logger";
 
 /**
@@ -56,7 +57,18 @@ export function spinDraftWheel(state: DraftSessionState): DraftSessionState {
     return state;
   }
 
-  // Filter squads to only those that have at least one un-drafted eligible player remaining
+  // Filter squads to only those that have at least one un-drafted eligible player whose role gate is open
+  const openGateSquads = state.availableSquadOptions
+    .map((squad) => ({
+      ...squad,
+      roster: squad.roster.filter(
+        (player) =>
+          !state.draftedAthleteIds.includes(player.athleteId) &&
+          !isRoleGateClosed(player.role, state.draftedPlayers)
+      ),
+    }))
+    .filter((squad) => squad.roster.length > 0);
+
   const eligibleSquads = state.availableSquadOptions
     .map((squad) => ({
       ...squad,
@@ -66,12 +78,23 @@ export function spinDraftWheel(state: DraftSessionState): DraftSessionState {
     }))
     .filter((squad) => squad.roster.length > 0);
 
-  if (eligibleSquads.length === 0) {
+  const candidatePool = openGateSquads.length > 0 ? openGateSquads : eligibleSquads;
+
+  if (candidatePool.length === 0) {
     throw new Error("No eligible players remaining across available squads");
   }
 
-  const randomIndex = Math.floor(Math.random() * eligibleSquads.length);
-  const activeSquad = eligibleSquads[randomIndex];
+  const randomIndex = Math.floor(Math.random() * candidatePool.length);
+  const selectedBase = candidatePool[randomIndex];
+
+  // Return the full squad with already-drafted athletes filtered out so user can see full team with gated cards
+  const fullSquad = state.availableSquadOptions.find((s) => s.id === selectedBase.id) || selectedBase;
+  const activeSquad: TournamentSquad = {
+    ...fullSquad,
+    roster: fullSquad.roster.filter(
+      (player) => !state.draftedAthleteIds.includes(player.athleteId)
+    ),
+  };
 
   logInfo(`Draft Wheel spun: Round ${state.currentRound}/${state.maxRounds}`, {
     squad: activeSquad.teamName,
@@ -83,6 +106,28 @@ export function spinDraftWheel(state: DraftSessionState): DraftSessionState {
     ...state,
     activeSquad,
   };
+}
+
+/**
+ * Automatically simulates and drafts a complete 11-player squad across random tournament squads,
+ * strictly abiding by role gate quotas and multi-edition player uniqueness.
+ *
+ * @param squads - Catalog of tournament squads.
+ * @returns Complete 11-player DraftSessionState.
+ */
+export function autoDraftCompleteTeam(squads: TournamentSquad[]): DraftSessionState {
+  let session = createDraftSession(squads);
+  while (!session.isComplete && session.currentRound <= session.maxRounds) {
+    session = spinDraftWheel(session);
+    if (!session.activeSquad) break;
+    const pickable = session.activeSquad.roster.filter(
+      (p) => !isRoleGateClosed(p.role, session.draftedPlayers)
+    );
+    if (pickable.length === 0) break;
+    const randomPick = pickable[Math.floor(Math.random() * pickable.length)];
+    session = selectDraftPick(session, randomPick);
+  }
+  return session;
 }
 
 /**

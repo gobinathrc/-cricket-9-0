@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ALL_TOURNAMENT_SQUADS, getSquadById } from "../../../../data/squads";
 import { DEFAULT_FORMATION } from "../../../../data/formations";
 import { selectDraftPick, DraftSessionState } from "../../../../engine/draft";
+import { isRoleGateClosed, getRoleGateQuota } from "../../../../engine/lineup";
 import { PlayerEditionRecord, TacticalFormation } from "../../../../types/cricket";
 import { logInfo, logWarn, logError } from "../../../../utils/logger";
 
@@ -55,6 +56,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json(
         { success: false, error: `Athlete ${candidatePlayer.name} has already been drafted in another edition` },
         { status: 400 }
+      );
+    }
+
+    // Role Gate: Prevent drafting a role whose tactical quota is already full
+    if (isRoleGateClosed(candidatePlayer.role, body.draftedPlayers || [])) {
+      const quota = getRoleGateQuota(candidatePlayer.role, body.draftedPlayers || []);
+      logWarn("API: Pick rejected - Role gate quota already met", {
+        role: candidatePlayer.role,
+        current: quota.current,
+        max: quota.max,
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Tactical quota already met for role ${candidatePlayer.role} (${quota.current}/${quota.max}). Cannot draft another ${candidatePlayer.role}.`,
+        },
+        { status: 422 }
       );
     }
 

@@ -6,9 +6,8 @@ import { DraftWheel } from "../components/DraftWheel";
 import { SquadXIView } from "../components/SquadXIView";
 import { GauntletRunner } from "../components/GauntletRunner";
 import { LeaderboardModal } from "../components/LeaderboardModal";
-import { FormationSelector } from "../components/FormationSelector";
 import { ALL_TOURNAMENT_SQUADS } from "../data/squads";
-import { createDraftSession, DraftSessionState } from "../engine/draft";
+import { createDraftSession, autoDraftCompleteTeam, DraftSessionState } from "../engine/draft";
 import { PlayerEditionRecord, TacticalFormation } from "../types/cricket";
 import { Swords, Trophy } from "lucide-react";
 import { logError } from "../utils/logger";
@@ -102,6 +101,18 @@ export default function HomePage() {
     }
   };
 
+  const handleReorderLineup = (updatedPlayers: PlayerEditionRecord[]) => {
+    setSession((prev) => ({
+      ...prev,
+      draftedPlayers: updatedPlayers,
+    }));
+  };
+
+  const handleAutoDraft = () => {
+    const fullSession = autoDraftCompleteTeam(ALL_TOURNAMENT_SQUADS);
+    setSession(fullSession);
+  };
+
   const handleSelectFormation = (formation: TacticalFormation) => {
     setSession((prev) => ({
       ...prev,
@@ -157,12 +168,16 @@ export default function HomePage() {
       {/* Main Mode Switcher: Drafting vs 9-0 Simulation Gauntlet */}
       {!session.isComplete ? (
         <div className="w-full flex flex-col items-center gap-6 mt-2">
-          {/* Tactical Formation Selector Banner */}
-          <FormationSelector
-            currentFormation={session.formation}
-            onSelectFormation={handleSelectFormation}
-            draftedCount={session.draftedPlayers.length}
-          />
+          {/* Streamlined Tactical Standard Header */}
+          <div className="w-full flex items-center justify-between px-4 py-2.5 rounded-2xl bg-slate-900/60 border border-white/10 backdrop-blur-md text-xs font-mono">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400">Tactical Quota:</span>
+              <span className="text-white font-bold">1 WK · 4 BAT · 2 AR · 4 BOWL</span>
+            </div>
+            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold text-amber-300 bg-amber-400/10 border border-amber-400/20">
+              🔒 ROLE-GATED
+            </span>
+          </div>
 
           {/* Mobile Tab Toggle */}
           <div className="flex sm:hidden p-1 bg-slate-900/60 border border-white/10 rounded-xl">
@@ -191,6 +206,7 @@ export default function HomePage() {
                 session={session}
                 onSpin={handleSpin}
                 onSelectPick={handleSelectPick}
+                onAutoDraft={handleAutoDraft}
                 isLoading={isLoading}
               />
             </div>
@@ -200,6 +216,7 @@ export default function HomePage() {
               <SquadXIView
                 draftedPlayers={session.draftedPlayers}
                 formation={session.formation}
+                onReorderLineup={handleReorderLineup}
               />
             </div>
           </div>
@@ -225,6 +242,7 @@ export default function HomePage() {
               <SquadXIView
                 draftedPlayers={session.draftedPlayers}
                 formation={session.formation}
+                onReorderLineup={handleReorderLineup}
               />
             </div>
           </div>
