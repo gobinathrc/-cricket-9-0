@@ -1,4 +1,5 @@
-import { DraftedSquad, MatchResult, PlayerEditionRecord } from "../types/cricket";
+import { DraftedSquad, MatchResult, PlayerEditionRecord, TacticalFormation } from "../types/cricket";
+import { DEFAULT_FORMATION } from "../data/formations";
 import { logInfo, logWarn } from "../utils/logger";
 
 /**
@@ -129,25 +130,46 @@ export const WORLD_CUP_SCHEDULE: OpponentTeamProfile[] = [
 ];
 
 /**
- * Inspects a drafted 11-player squad to evaluate tactical viability and composition balance.
- * Enforces the strict rule: at least 1 WK, 4 BAT, 2 AR, and 3 BOWL (with 1 Flex slot).
+ * Inspects a drafted 11-player squad to evaluate tactical viability and composition balance
+ * against a chosen TacticalFormation preset (defaulting to Standard Balanced 1-4-2-4).
  *
  * @param players - Array of 11 drafted player records.
+ * @param formation - Target tactical formation specifying role quotas (WK, BAT, AR, BOWL).
  * @returns Evaluated DraftedSquad entity.
  */
-export function evaluateSquadTactics(players: PlayerEditionRecord[]): DraftedSquad {
+export function evaluateSquadTactics(
+  players: PlayerEditionRecord[],
+  formation: TacticalFormation = DEFAULT_FORMATION
+): DraftedSquad {
   const wkCount = players.filter((p) => p.role === "WK").length;
   const batCount = players.filter((p) => p.role === "BAT").length;
   const arCount = players.filter((p) => p.role === "AR").length;
   const bowlCount = players.filter((p) => p.role === "BOWL").length;
 
-  const missingRoleDescriptions: string[] = [];
-  if (wkCount < 1) missingRoleDescriptions.push("Need at least 1 Wicketkeeper (WK)");
-  if (batCount < 4) missingRoleDescriptions.push(`Need at least 4 Batsmen (Current: ${batCount}/4)`);
-  if (arCount < 2) missingRoleDescriptions.push(`Need at least 2 All-Rounders (Current: ${arCount}/2)`);
-  if (bowlCount < 3) missingRoleDescriptions.push(`Need at least 3 Bowlers (Current: ${bowlCount}/3)`);
+  const targetWk = formation.wk;
+  const targetBat = formation.bat;
+  const targetAr = formation.ar;
+  const targetBowl = formation.bowl;
 
-  const hasRequiredRoles = wkCount >= 1 && batCount >= 4 && arCount >= 2 && bowlCount >= 3;
+  const missingRoleDescriptions: string[] = [];
+  if (wkCount < targetWk) {
+    missingRoleDescriptions.push(`Need at least ${targetWk} Wicketkeeper${targetWk > 1 ? "s" : ""} (WK)`);
+  }
+  if (batCount < targetBat) {
+    missingRoleDescriptions.push(`Need at least ${targetBat} Batsmen (Current: ${batCount}/${targetBat})`);
+  }
+  if (arCount < targetAr) {
+    missingRoleDescriptions.push(`Need at least ${targetAr} All-Rounders (Current: ${arCount}/${targetAr})`);
+  }
+  if (bowlCount < targetBowl) {
+    missingRoleDescriptions.push(`Need at least ${targetBowl} Bowlers (Current: ${bowlCount}/${targetBowl})`);
+  }
+
+  const hasRequiredRoles =
+    wkCount >= targetWk &&
+    batCount >= targetBat &&
+    arCount >= targetAr &&
+    bowlCount >= targetBowl;
 
   const eligibleBowlers = players.filter((p) => p.role === "BOWL" || p.role === "AR");
   const spinnerCount = eligibleBowlers.filter(
@@ -176,6 +198,7 @@ export function evaluateSquadTactics(players: PlayerEditionRecord[]): DraftedSqu
 
   return {
     players,
+    formation,
     wkCount,
     batCount,
     arCount,
@@ -206,10 +229,11 @@ export function simulateFixture(
 ): MatchResult {
   let effectiveUserBowling = squad.teamBowlingOvr;
 
-  if (squad.bowlCount < 3) {
-    const missing = 3 - squad.bowlCount;
+  const targetBowl = squad.formation ? squad.formation.bowl : 3;
+  if (squad.bowlCount < targetBowl) {
+    const missing = targetBowl - squad.bowlCount;
     effectiveUserBowling -= missing * 8;
-    logWarn(`Squad lacks 3 frontline bowlers in Match ${matchNumber}; applying penalty`, { missing });
+    logWarn(`Squad lacks frontline bowlers for ${squad.formation?.name || "tactics"} in Match ${matchNumber}; applying penalty`, { missing });
   }
 
   if (squad.isBalancedAttack) {

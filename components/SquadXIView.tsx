@@ -3,20 +3,40 @@
 import React from "react";
 import { CheckCircle2, AlertTriangle, ShieldCheck, Zap } from "lucide-react";
 import { evaluateSquadTactics } from "../engine/simulator";
-import { PlayerEditionRecord } from "../types/cricket";
+import { DEFAULT_FORMATION } from "../data/formations";
+import { PlayerEditionRecord, TacticalFormation } from "../types/cricket";
 
 interface SquadXIViewProps {
   draftedPlayers: PlayerEditionRecord[];
+  formation?: TacticalFormation;
 }
 
 /**
  * Tactical Starting XI dashboard displaying player cards, roles, and strict composition checklist.
- * Enforces the minimum quota: at least 1 WK, 4 BAT, 2 AR, and 3 BOWL.
+ * Validates against the chosen TacticalFormation (default: Standard Balanced 1-4-2-4).
  *
  * @param props - SquadXIViewProps
  */
-export const SquadXIView: React.FC<SquadXIViewProps> = ({ draftedPlayers }) => {
-  const squad = evaluateSquadTactics(draftedPlayers);
+export const SquadXIView: React.FC<SquadXIViewProps> = ({
+  draftedPlayers,
+  formation = DEFAULT_FORMATION,
+}) => {
+  const squad = evaluateSquadTactics(draftedPlayers, formation);
+
+  /**
+   * Derives contextual slot descriptions matching the chosen formation layout.
+   */
+  const getSlotRoleLabel = (index: number): string => {
+    let offset = 0;
+    if (index < offset + squad.formation.wk) return "Wicketkeeper Slot";
+    offset += squad.formation.wk;
+    if (index < offset + squad.formation.bat) return "Batsman Slot";
+    offset += squad.formation.bat;
+    if (index < offset + squad.formation.ar) return "All-Rounder Slot";
+    offset += squad.formation.ar;
+    if (index < offset + squad.formation.bowl) return "Bowler Slot";
+    return "Flex Slot";
+  };
 
   return (
     <div className="flex flex-col gap-6 w-full">
@@ -70,37 +90,37 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({ draftedPlayers }) => {
         {/* Role Counters Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
           <div className={`p-2.5 rounded-xl border flex items-center justify-between ${
-            squad.wkCount >= 1 ? "bg-purple-500/10 border-purple-500/30 text-purple-200" : "bg-white/5 border-white/10 text-slate-400"
+            squad.wkCount >= squad.formation.wk ? "bg-purple-500/10 border-purple-500/30 text-purple-200" : "bg-white/5 border-white/10 text-slate-400"
           }`}>
-            <span>WK (Min 1):</span>
-            <span className="font-bold text-sm">{squad.wkCount}/1</span>
+            <span>WK (Min {squad.formation.wk}):</span>
+            <span className="font-bold text-sm">{squad.wkCount}/{squad.formation.wk}</span>
           </div>
 
           <div className={`p-2.5 rounded-xl border flex items-center justify-between ${
-            squad.batCount >= 4 ? "bg-blue-500/10 border-blue-500/30 text-blue-200" : "bg-white/5 border-white/10 text-slate-400"
+            squad.batCount >= squad.formation.bat ? "bg-blue-500/10 border-blue-500/30 text-blue-200" : "bg-white/5 border-white/10 text-slate-400"
           }`}>
-            <span>BAT (Min 4):</span>
-            <span className="font-bold text-sm">{squad.batCount}/4</span>
+            <span>BAT (Min {squad.formation.bat}):</span>
+            <span className="font-bold text-sm">{squad.batCount}/{squad.formation.bat}</span>
           </div>
 
           <div className={`p-2.5 rounded-xl border flex items-center justify-between ${
-            squad.arCount >= 2 ? "bg-amber-500/10 border-amber-500/30 text-amber-200" : "bg-white/5 border-white/10 text-slate-400"
+            squad.arCount >= squad.formation.ar ? "bg-amber-500/10 border-amber-500/30 text-amber-200" : "bg-white/5 border-white/10 text-slate-400"
           }`}>
-            <span>AR (Min 2):</span>
-            <span className="font-bold text-sm">{squad.arCount}/2</span>
+            <span>AR (Min {squad.formation.ar}):</span>
+            <span className="font-bold text-sm">{squad.arCount}/{squad.formation.ar}</span>
           </div>
 
           <div className={`p-2.5 rounded-xl border flex items-center justify-between ${
-            squad.bowlCount >= 3 ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-200" : "bg-white/5 border-white/10 text-slate-400"
+            squad.bowlCount >= squad.formation.bowl ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-200" : "bg-white/5 border-white/10 text-slate-400"
           }`}>
-            <span>BOWL (Min 3):</span>
-            <span className="font-bold text-sm">{squad.bowlCount}/3</span>
+            <span>BOWL (Min {squad.formation.bowl}):</span>
+            <span className="font-bold text-sm">{squad.bowlCount}/{squad.formation.bowl}</span>
           </div>
         </div>
 
         {squad.missingRoleDescriptions.length > 0 && draftedPlayers.length >= 8 && (
           <div className="p-2 rounded-lg bg-amber-500/15 border border-amber-500/30 text-[11px] font-mono text-amber-300">
-            ⚠ Still needed before simulation: {squad.missingRoleDescriptions.join(" · ")}
+            ⚠ Still needed for {squad.formation.shortCode}: {squad.missingRoleDescriptions.join(" · ")}
           </div>
         )}
       </div>
@@ -108,7 +128,7 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({ draftedPlayers }) => {
       {/* Starting XI Roster Slots */}
       <div className="flex flex-col gap-2">
         <h4 className="text-sm font-semibold uppercase tracking-wider font-mono text-slate-400 px-1">
-          Starting XI Roster ({draftedPlayers.length}/11)
+          Starting XI Roster ({draftedPlayers.length}/11) · {squad.formation.name}
         </h4>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
@@ -149,7 +169,7 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({ draftedPlayers }) => {
               >
                 <span className="text-xs font-mono font-bold w-4">#{index + 1}</span>
                 <span className="text-xs font-mono">
-                  {index === 0 ? "WK Slot" : index < 5 ? "Batter Slot" : index < 7 ? "All-Rounder Slot" : index < 10 ? "Bowler Slot" : "Flex Slot"}
+                  {getSlotRoleLabel(index)}
                 </span>
                 <span className="text-xs font-mono">--</span>
               </div>

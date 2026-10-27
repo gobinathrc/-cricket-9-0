@@ -68,7 +68,7 @@ describe("T20 Match Simulator Engine (9-0 Championship Path & Strict Quotas)", (
     expect(evaluation.hasRequiredRoles).toBe(false);
     expect(evaluation.missingRoleDescriptions).toContain("Need at least 1 Wicketkeeper (WK)");
     expect(evaluation.missingRoleDescriptions).toContain("Need at least 2 All-Rounders (Current: 0/2)");
-    expect(evaluation.missingRoleDescriptions).toContain("Need at least 3 Bowlers (Current: 0/3)");
+    expect(evaluation.missingRoleDescriptions).toContain("Need at least 4 Bowlers (Current: 0/4)");
   });
 
   it("simulates a fixture and produces realistic scores and valid win/loss state", () => {

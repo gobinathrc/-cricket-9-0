@@ -1,4 +1,5 @@
-import { PlayerEditionRecord, TournamentSquad } from "../types/cricket";
+import { PlayerEditionRecord, TacticalFormation, TournamentSquad } from "../types/cricket";
+import { DEFAULT_FORMATION } from "../data/formations";
 import { logInfo, logWarn } from "../utils/logger";
 
 /**
@@ -7,6 +8,7 @@ import { logInfo, logWarn } from "../utils/logger";
 export interface DraftSessionState {
   currentRound: number; // 1 to 11
   maxRounds: number; // 11
+  formation: TacticalFormation; // Active tactical configuration
   activeSquad: TournamentSquad | null;
   availableSquadOptions: TournamentSquad[];
   draftedPlayers: PlayerEditionRecord[];
@@ -18,13 +20,21 @@ export interface DraftSessionState {
  * Initializes a new 11-round draft session.
  *
  * @param squads - Full database of historical tournament squads.
+ * @param formation - Chosen tactical formation (default: Standard Balanced 1-4-2-4).
  * @returns Initialized DraftSessionState.
  */
-export function createDraftSession(squads: TournamentSquad[]): DraftSessionState {
-  logInfo("Initializing new 11-round draft session", { totalSquads: squads.length });
+export function createDraftSession(
+  squads: TournamentSquad[],
+  formation: TacticalFormation = DEFAULT_FORMATION
+): DraftSessionState {
+  logInfo("Initializing new 11-round draft session", {
+    totalSquads: squads.length,
+    formation: formation.shortCode,
+  });
   return {
     currentRound: 1,
     maxRounds: 11,
+    formation,
     activeSquad: null,
     availableSquadOptions: squads,
     draftedPlayers: [],

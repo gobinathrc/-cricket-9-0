@@ -5,11 +5,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
 import { Play, Pause, FastForward, RotateCcw, Trophy, Skull } from "lucide-react";
 import { WORLD_CUP_SCHEDULE } from "../engine/simulator";
-import { MatchResult, PlayerEditionRecord } from "../types/cricket";
+import { MatchResult, PlayerEditionRecord, TacticalFormation } from "../types/cricket";
 import { logInfo, logError } from "../utils/logger";
 
 interface GauntletRunnerProps {
   draftedPlayers: PlayerEditionRecord[];
+  formation?: TacticalFormation;
   onResetDraft: () => void;
 }
 
@@ -20,6 +21,7 @@ interface GauntletRunnerProps {
  */
 export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
   draftedPlayers,
+  formation,
   onResetDraft,
 }) => {
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0); // 0 to 8
@@ -55,6 +57,7 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
         body: JSON.stringify({
           draftedPlayers,
           matchIndex: currentMatchIndex,
+          formation,
         }),
       });
 

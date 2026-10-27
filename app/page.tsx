@@ -6,9 +6,10 @@ import { DraftWheel } from "../components/DraftWheel";
 import { SquadXIView } from "../components/SquadXIView";
 import { GauntletRunner } from "../components/GauntletRunner";
 import { LeaderboardModal } from "../components/LeaderboardModal";
+import { FormationSelector } from "../components/FormationSelector";
 import { ALL_TOURNAMENT_SQUADS } from "../data/squads";
 import { createDraftSession, DraftSessionState } from "../engine/draft";
-import { PlayerEditionRecord } from "../types/cricket";
+import { PlayerEditionRecord, TacticalFormation } from "../types/cricket";
 import { Swords, Trophy } from "lucide-react";
 import { logError } from "../utils/logger";
 
@@ -76,6 +77,7 @@ export default function HomePage() {
           currentRound: session.currentRound,
           draftedPlayers: session.draftedPlayers,
           draftedAthleteIds: session.draftedAthleteIds,
+          formation: session.formation,
         }),
       });
 
@@ -100,20 +102,31 @@ export default function HomePage() {
     }
   };
 
+  const handleSelectFormation = (formation: TacticalFormation) => {
+    setSession((prev) => ({
+      ...prev,
+      formation,
+    }));
+  };
+
   const handleResetDraft = async () => {
     setIsLoading(true);
     setApiError(null);
 
     try {
-      const res = await fetch("/api/draft/session", { method: "POST" });
+      const res = await fetch("/api/draft/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ formation: session.formation }),
+      });
       const json = await res.json();
       if (json.success && json.data) {
         setSession(json.data);
       } else {
-        setSession(createDraftSession(ALL_TOURNAMENT_SQUADS));
+        setSession(createDraftSession(ALL_TOURNAMENT_SQUADS, session.formation));
       }
     } catch {
-      setSession(createDraftSession(ALL_TOURNAMENT_SQUADS));
+      setSession(createDraftSession(ALL_TOURNAMENT_SQUADS, session.formation));
     } finally {
       setIsLoading(false);
       setActiveTab("DRAFT");
@@ -144,6 +157,13 @@ export default function HomePage() {
       {/* Main Mode Switcher: Drafting vs 9-0 Simulation Gauntlet */}
       {!session.isComplete ? (
         <div className="w-full flex flex-col items-center gap-6 mt-2">
+          {/* Tactical Formation Selector Banner */}
+          <FormationSelector
+            currentFormation={session.formation}
+            onSelectFormation={handleSelectFormation}
+            draftedCount={session.draftedPlayers.length}
+          />
+
           {/* Mobile Tab Toggle */}
           <div className="flex sm:hidden p-1 bg-slate-900/60 border border-white/10 rounded-xl">
             <button
@@ -177,7 +197,10 @@ export default function HomePage() {
 
             {/* Right 5 Cols: Live XI Formation & Tactics */}
             <div className={`lg:col-span-5 flex flex-col ${activeTab === "SQUAD" ? "block" : "hidden sm:block"}`}>
-              <SquadXIView draftedPlayers={session.draftedPlayers} />
+              <SquadXIView
+                draftedPlayers={session.draftedPlayers}
+                formation={session.formation}
+              />
             </div>
           </div>
         </div>
@@ -186,19 +209,23 @@ export default function HomePage() {
         <div className="w-full flex flex-col items-center gap-8 mt-6">
           <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-mono font-bold tracking-wider">
             <Swords className="w-4 h-4" />
-            STARTING XI LOCKED · ENTERING THE 9-0 WORLD CUP GAUNTLET
+            STARTING XI LOCKED ({session.formation.shortCode}) · ENTERING THE 9-0 WORLD CUP GAUNTLET
           </div>
 
           <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             <div className="lg:col-span-8">
               <GauntletRunner
                 draftedPlayers={session.draftedPlayers}
+                formation={session.formation}
                 onResetDraft={handleResetDraft}
               />
             </div>
 
             <div className="lg:col-span-4">
-              <SquadXIView draftedPlayers={session.draftedPlayers} />
+              <SquadXIView
+                draftedPlayers={session.draftedPlayers}
+                formation={session.formation}
+              />
             </div>
           </div>
         </div>

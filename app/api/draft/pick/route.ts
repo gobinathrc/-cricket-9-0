@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ALL_TOURNAMENT_SQUADS, getSquadById } from "../../../../data/squads";
+import { DEFAULT_FORMATION } from "../../../../data/formations";
 import { selectDraftPick, DraftSessionState } from "../../../../engine/draft";
-import { PlayerEditionRecord } from "../../../../types/cricket";
+import { PlayerEditionRecord, TacticalFormation } from "../../../../types/cricket";
 import { logInfo, logWarn, logError } from "../../../../utils/logger";
 
 interface PickRequestBody {
@@ -10,6 +11,7 @@ interface PickRequestBody {
   currentRound: number;
   draftedPlayers: PlayerEditionRecord[];
   draftedAthleteIds: string[];
+  formation?: TacticalFormation;
 }
 
 /**
@@ -59,6 +61,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const stateStub: DraftSessionState = {
       currentRound: body.currentRound,
       maxRounds: 11,
+      formation: body.formation || DEFAULT_FORMATION,
       activeSquad: squad,
       availableSquadOptions: ALL_TOURNAMENT_SQUADS,
       draftedPlayers: body.draftedPlayers || [],

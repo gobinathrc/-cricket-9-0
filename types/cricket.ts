@@ -70,17 +70,35 @@ export interface TournamentSquad {
 }
 
 /**
+ * Tactical formation model specifying required player count quotas across roles.
+ * Must sum to 11 players with at least 1 WK, 1 BAT, and 1 BOWL.
+ */
+export interface TacticalFormation {
+  id: string;
+  name: string;
+  shortCode: string; // e.g., "1-4-2-4", "1-1-4-5"
+  tagline: string;
+  description: string;
+  wk: number;
+  bat: number;
+  ar: number;
+  bowl: number;
+  isStandard?: boolean;
+}
+
+/**
  * Tactical user squad configuration (11 drafted players).
  */
 export interface DraftedSquad {
   players: PlayerEditionRecord[];
+  formation: TacticalFormation;
   wkCount: number;
   batCount: number;
   arCount: number;
   bowlCount: number;
   hasWicketKeeper: boolean;
   bowlerCount: number;
-  hasRequiredRoles: boolean; // Enforces: WK >= 1, BAT >= 4, AR >= 2, BOWL >= 3
+  hasRequiredRoles: boolean;
   missingRoleDescriptions: string[];
   isBalancedAttack: boolean; // At least 1 spinner and at least 2 pacers
   teamBattingOvr: number;

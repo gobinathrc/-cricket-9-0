@@ -20,7 +20,8 @@ function createMockNextRequest(url: string, body?: unknown, method: string = "PO
 
 describe("Next.js Backend API Route Handlers", () => {
   it("POST /api/draft/session initializes clean draft session", async () => {
-    const res = await handleSessionPost();
+    const req = createMockNextRequest("http://localhost:3000/api/draft/session", {});
+    const res = await handleSessionPost(req);
     const json = await res.json();
 
     expect(res.status).toBe(200);
@@ -134,6 +135,46 @@ describe("Next.js Backend API Route Handlers", () => {
     expect(json.data.result.matchNumber).toBe(1);
     expect(typeof json.data.result.userWon).toBe("boolean");
     expect(json.data.stageName).toBe("GROUP STAGE");
+  });
+
+  it("POST /api/simulate validates squad against custom 1-1-4-5 formation", async () => {
+    // 1 WK, 1 BAT, 4 AR, 5 BOWL
+    const squad1145 = Array.from({ length: 11 }).map((_, i) => ({
+      id: `p_${i}`,
+      athleteId: `ath_${i}`,
+      name: `Player ${i}`,
+      countryCode: "IND",
+      editionYear: 2024,
+      role: i === 0 ? "WK" : i === 1 ? "BAT" : i < 6 ? "AR" : "BOWL",
+      battingStyle: "RHB",
+      bowlingType: i >= 2 ? "FAST" : "NONE",
+      ovr: 88,
+      subRatings: { batting: 88, bowling: i >= 2 ? 88 : 50, paceOrTurn: 85, clutch: 88 },
+      tournamentStats: { runs: 100, ballsFaced: 70, strikeRate: 140, average: 30, wickets: 5, oversBowled: 15, economy: 7.0 },
+    }));
+
+    const req = createMockNextRequest("http://localhost:3000/api/simulate", {
+      draftedPlayers: squad1145,
+      matchIndex: 0,
+      formation: {
+        id: "custom_1145",
+        name: "All-Rounder Fortress",
+        shortCode: "1-1-4-5",
+        tagline: "Test formation",
+        description: "Test",
+        wk: 1,
+        bat: 1,
+        ar: 4,
+        bowl: 5,
+      },
+    });
+
+    const res = await handleSimulatePost(req);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.data.result.userWon !== undefined).toBe(true);
   });
 
   it("GET /api/leaderboard returns hall of fame records", async () => {

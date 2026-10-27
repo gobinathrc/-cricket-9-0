@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ALL_TOURNAMENT_SQUADS } from "../../../../data/squads";
+import { DEFAULT_FORMATION } from "../../../../data/formations";
 import { spinDraftWheel, DraftSessionState } from "../../../../engine/draft";
 import { logInfo, logError } from "../../../../utils/logger";
 
@@ -37,6 +38,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const stateStub: DraftSessionState = {
       currentRound: body.currentRound,
       maxRounds: 11,
+      formation: DEFAULT_FORMATION,
       activeSquad: null,
       availableSquadOptions: ALL_TOURNAMENT_SQUADS,
       draftedPlayers: (body.draftedPlayers as any) || [],

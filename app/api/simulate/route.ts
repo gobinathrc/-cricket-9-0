@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { evaluateSquadTactics, WORLD_CUP_SCHEDULE, simulateFixture } from "../../../engine/simulator";
-import { PlayerEditionRecord } from "../../../types/cricket";
+import { PlayerEditionRecord, TacticalFormation } from "../../../types/cricket";
 import { logInfo, logWarn, logError } from "../../../utils/logger";
 
 interface SimulateRequestBody {
   draftedPlayers: PlayerEditionRecord[];
   matchIndex: number; // 0 to 8
+  formation?: TacticalFormation;
 }
 
 /**
@@ -39,16 +40,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const opponent = WORLD_CUP_SCHEDULE[body.matchIndex];
     const matchNumber = body.matchIndex + 1;
 
-    const squad = evaluateSquadTactics(body.draftedPlayers);
+    const squad = evaluateSquadTactics(body.draftedPlayers, body.formation);
 
     if (!squad.hasRequiredRoles) {
       logWarn("API: Simulation rejected - Squad failed required tactical composition", {
+        formation: squad.formation.shortCode,
         missing: squad.missingRoleDescriptions,
       });
       return NextResponse.json(
         {
           success: false,
-          error: `Invalid Starting XI composition: ${squad.missingRoleDescriptions.join(". ")}. (Requires at least 1 WK, 4 BAT, 2 AR, 3 BOWL).`,
+          error: `Invalid Starting XI composition for ${squad.formation.name} (${squad.formation.shortCode}): ${squad.missingRoleDescriptions.join(". ")}.`,
         },
         { status: 422 }
       );
