@@ -1,5 +1,6 @@
 /**
- * Dedicated logger module adhering to production boundaries (disallowing raw console.log).
+ * Dedicated universal logger module adhering to production boundaries.
+ * Safely routes output in both server (Node.js stream) and client (browser) environments.
  */
 
 type LogLevel = "DEBUG" | "INFO" | "WARN" | "ERROR";
@@ -12,8 +13,8 @@ interface LogPayload {
 }
 
 /**
- * Dispatches structured logs through standard error/output channels with formatted metadata.
- * Isolates logging logic so production targets can stream to centralized collectors without code modifications.
+ * Dispatches structured logs through appropriate environment channels.
+ * Prevents client-side crashes by guarding process stream handles in the browser.
  *
  * @param level - Severity category of the log.
  * @param message - Primary descriptive string.
@@ -31,11 +32,25 @@ function emitLog(level: LogLevel, message: string, context?: Record<string, unkn
     context ? " " + JSON.stringify(context) : ""
   }`;
 
-  // Directing through appropriate stream prevents console polution while honoring production guidelines
-  if (level === "ERROR") {
-    process.stderr.write(formatted + "\n");
-  } else {
-    process.stdout.write(formatted + "\n");
+  // Client-side environment check
+  if (typeof window !== "undefined") {
+    if (level === "ERROR") {
+      console.error(formatted);
+    } else if (level === "WARN") {
+      console.warn(formatted);
+    } else {
+      console.info(formatted);
+    }
+    return;
+  }
+
+  // Server-side environment check (Node.js runtime)
+  if (typeof process !== "undefined" && process.stdout?.write) {
+    if (level === "ERROR" && process.stderr?.write) {
+      process.stderr.write(formatted + "\n");
+    } else {
+      process.stdout.write(formatted + "\n");
+    }
   }
 }
 

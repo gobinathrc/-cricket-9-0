@@ -93,7 +93,13 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
         if (isChampionshipDecider || nextIndex === 9) {
           setIsAutoPlaying(false);
           setIsChampion(true);
-          confetti({ particleCount: 200, spread: 90, origin: { y: 0.55 } });
+          try {
+            if (typeof window !== "undefined") {
+              confetti({ particleCount: 200, spread: 90, origin: { y: 0.55 } });
+            }
+          } catch {
+            // Non-critical visual effect error suppressed
+          }
 
           fetch("/api/leaderboard", {
             method: "POST",
