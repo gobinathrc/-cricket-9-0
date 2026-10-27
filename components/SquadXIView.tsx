@@ -394,7 +394,7 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({
                       handleDrop(index);
                     }}
                     onDragEnd={handleDragEnd}
-                    className={`relative p-4 rounded-2xl bg-gradient-to-br ${styles.glow} border ${
+                    className={`relative p-4 rounded-2xl overflow-hidden bg-gradient-to-br ${styles.glow} border ${
                       isHoveredTarget
                         ? "ring-2 ring-amber-400 border-amber-400 bg-amber-400/20 scale-[1.02] shadow-xl shadow-amber-400/30 z-20"
                         : isBeingDragged
@@ -406,26 +406,26 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({
                   >
                     {/* Card Header: Position Badge, Drag Grip, and Large 38-0 OVR */}
                     <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2.5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <div
-                          className="text-slate-400 group-hover:text-amber-400 transition cursor-grab active:cursor-grabbing"
+                          className="text-slate-400 group-hover:text-amber-400 transition cursor-grab active:cursor-grabbing flex-shrink-0"
                           title="Drag to swap or move batting position"
                         >
                           <GripVertical className="w-4 h-4" />
                         </div>
 
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-mono font-black text-amber-400">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-xs font-mono font-black text-amber-400 flex-shrink-0">
                             #{index + 1}
                           </span>
-                          <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${styles.tagText}`}>
+                          <span className={`text-[10px] font-mono font-bold uppercase tracking-wider truncate ${styles.tagText}`}>
                             {positionInfo.title}
                           </span>
                         </div>
                       </div>
 
                       {/* Big Bold 38-0 Style OVR */}
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-shrink-0">
                         <span className={`text-[10px] font-mono font-extrabold px-1.5 py-0.5 rounded border ${styles.badge}`}>
                           {player.role}
                         </span>
@@ -445,7 +445,7 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({
                           {player.countryCode} ({player.editionYear})
                         </span>
                         <span>·</span>
-                        <span className="text-slate-400 text-[11px]">
+                        <span className="text-slate-400 text-[11px] truncate">
                           {player.battingStyle} · {player.bowlingType !== "NONE" ? player.bowlingType : "BAT"}
                         </span>
                       </div>
@@ -459,33 +459,33 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({
                       )}
                     </div>
 
-                    {/* Card Footer: Sub-Rating Chips & Steppers */}
-                    <div className="flex items-center justify-between pt-2 border-t border-white/10 gap-2">
+                    {/* Card Footer: Sub-Rating Chips & Nested Steppers */}
+                    <div className="flex items-center justify-between pt-2 border-t border-white/10 gap-1.5 w-full">
                       {/* Mini Sub-Rating Stats (38-0 Style) */}
-                      <div className="flex items-center gap-2 text-[10px] font-mono">
-                        <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/10">
-                          <span className="text-slate-400">BAT:</span>
+                      <div className="flex items-center gap-1.5 text-[10px] font-mono min-w-0 flex-wrap">
+                        <div className="flex items-center gap-1 bg-white/5 px-1.5 py-0.5 rounded border border-white/10">
+                          <span className="text-slate-400">BAT</span>
                           <span className="font-bold text-amber-300">
                             {player.subRatings?.batting || player.ovr}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/10">
-                          <span className="text-slate-400">BOWL:</span>
+                        <div className="flex items-center gap-1 bg-white/5 px-1.5 py-0.5 rounded border border-white/10">
+                          <span className="text-slate-400">BOWL</span>
                           <span className="font-bold text-emerald-300">
                             {player.subRatings?.bowling || 40}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded border border-white/10">
-                          <span className="text-slate-400">CLUTCH:</span>
+                        <div className="hidden min-[400px]:flex items-center gap-1 bg-white/5 px-1.5 py-0.5 rounded border border-white/10">
+                          <span className="text-slate-400">CLU</span>
                           <span className="font-bold text-purple-300">
                             {player.subRatings?.clutch || 85}
                           </span>
                         </div>
                       </div>
 
-                      {/* Step Up / Down Buttons for Click & Mobile Touch Reordering */}
+                      {/* Step Up / Down Stepper Pill: Clean, Compact & Safely Nested Inside Card */}
                       {onReorderLineup && draftedPlayers.length > 1 && (
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <div className="flex items-center rounded-lg bg-black/40 border border-white/15 p-0.5 flex-shrink-0">
                           <button
                             type="button"
                             disabled={index === 0}
@@ -493,12 +493,13 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({
                               e.stopPropagation();
                               handleMoveUp(index);
                             }}
-                            className="p-2 sm:p-1.5 rounded-lg bg-white/10 hover:bg-amber-400/20 active:bg-amber-400/30 text-slate-300 hover:text-amber-300 disabled:opacity-20 border border-white/15 transition touch-manipulation min-w-[32px] min-h-[32px] flex items-center justify-center"
+                            className="p-1 px-1.5 rounded hover:bg-amber-400/20 active:bg-amber-400/30 text-slate-300 hover:text-amber-300 disabled:opacity-20 transition touch-manipulation flex items-center justify-center"
                             title="Move up in batting lineup"
                             aria-label={`Move ${player.name} up in batting lineup`}
                           >
-                            <ArrowUp className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                            <ArrowUp className="w-3.5 h-3.5" />
                           </button>
+                          <div className="w-px h-3.5 bg-white/15" />
                           <button
                             type="button"
                             disabled={index === draftedPlayers.length - 1}
@@ -506,11 +507,11 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({
                               e.stopPropagation();
                               handleMoveDown(index);
                             }}
-                            className="p-2 sm:p-1.5 rounded-lg bg-white/10 hover:bg-amber-400/20 active:bg-amber-400/30 text-slate-300 hover:text-amber-300 disabled:opacity-20 border border-white/15 transition touch-manipulation min-w-[32px] min-h-[32px] flex items-center justify-center"
+                            className="p-1 px-1.5 rounded hover:bg-amber-400/20 active:bg-amber-400/30 text-slate-300 hover:text-amber-300 disabled:opacity-20 transition touch-manipulation flex items-center justify-center"
                             title="Move down in batting lineup"
                             aria-label={`Move ${player.name} down in batting lineup`}
                           >
-                            <ArrowDown className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+                            <ArrowDown className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       )}
