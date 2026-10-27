@@ -30,9 +30,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    if (typeof body.matchIndex !== "number" || body.matchIndex < 0 || body.matchIndex >= 9) {
+    if (typeof body.matchIndex !== "number" || body.matchIndex < 0 || body.matchIndex >= WORLD_CUP_SCHEDULE.length) {
       return NextResponse.json(
-        { success: false, error: "Invalid matchIndex: must be an integer between 0 and 8" },
+        { success: false, error: `Invalid matchIndex: must be an integer between 0 and ${WORLD_CUP_SCHEDULE.length - 1}` },
         { status: 400 }
       );
     }
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     const result = simulateFixture(squad, opponent, matchNumber);
 
-    const isChampion = result.userWon && matchNumber === 9;
+    const isChampion = result.userWon && matchNumber === WORLD_CUP_SCHEDULE.length;
 
     logInfo("API: Match simulated on server", {
       matchNumber,

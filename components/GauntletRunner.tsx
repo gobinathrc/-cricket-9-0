@@ -43,8 +43,10 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
       .reduce((acc, curr) => acc + curr.subRatings.bowling, 0) / 5
   );
 
+  const totalMatches = WORLD_CUP_SCHEDULE.length;
+
   const runSingleMatch = async () => {
-    if (runFailed || isChampion || currentMatchIndex >= 9 || isSimulatingCurrent) return;
+    if (runFailed || isChampion || currentMatchIndex >= totalMatches || isSimulatingCurrent) return;
 
     setIsSimulatingCurrent(true);
     setServerError(null);
@@ -93,7 +95,7 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
         const nextIndex = currentMatchIndex + 1;
         setCurrentMatchIndex(nextIndex);
 
-        if (isChampionshipDecider || nextIndex === 9) {
+        if (isChampionshipDecider || nextIndex === totalMatches) {
           setIsAutoPlaying(false);
           setIsChampion(true);
           try {
@@ -109,11 +111,11 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               userName: "ChampionSkipper",
-              streak: 9,
+              streak: totalMatches,
               isChampion: true,
               teamAverageOvr: Math.round((teamBattingOvr + teamBowlingOvr) / 2),
               finalStage: "THE FINAL (Champions)",
-              summary: "Undefeated 9-0 clean sweep World Champions",
+              summary: `Undefeated ${totalMatches}-0 clean sweep World Champions`,
             }),
           }).catch((err) => logError("Failed to record champion run", { err }));
         }
@@ -127,16 +129,16 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (isAutoPlaying && !runFailed && !isChampion && currentMatchIndex < 9) {
+    if (isAutoPlaying && !runFailed && !isChampion && currentMatchIndex < totalMatches) {
       timer = setTimeout(() => {
         runSingleMatch();
       }, 950);
     }
     return () => clearTimeout(timer);
-  }, [isAutoPlaying, currentMatchIndex, runFailed, isChampion]);
+  }, [isAutoPlaying, currentMatchIndex, runFailed, isChampion, totalMatches]);
 
   const streak = currentMatchIndex;
-  const currentOpponent = WORLD_CUP_SCHEDULE[currentMatchIndex] || WORLD_CUP_SCHEDULE[8];
+  const currentOpponent = WORLD_CUP_SCHEDULE[currentMatchIndex] || WORLD_CUP_SCHEDULE[totalMatches - 1];
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-3xl mx-auto">
@@ -144,13 +146,13 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
       <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-slate-900/80 border border-white/15 rounded-3xl backdrop-blur-2xl shadow-2xl gap-4">
         <div className="flex flex-col">
           <span className="text-xs font-mono uppercase tracking-widest text-amber-400 font-bold">
-            The 9 - 0 Championship Path
+            The {totalMatches} - 0 Championship Path
           </span>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-4xl sm:text-5xl font-black font-mono text-white tracking-tight">
               {streak} - 0
             </span>
-            <span className="text-sm font-mono text-slate-400">/ 9 WINS</span>
+            <span className="text-sm font-mono text-slate-400">/ {totalMatches} WINS</span>
           </div>
         </div>
 
@@ -198,17 +200,20 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
         </div>
       )}
 
-      {/* Progress Bar towards 9 */}
+      {/* Progress Bar towards tournament victory */}
       <div className="w-full bg-slate-800/60 rounded-full h-2.5 overflow-hidden border border-white/5">
         <motion.div
           className="bg-gradient-to-r from-emerald-500 via-teal-400 to-amber-400 h-full rounded-full"
-          animate={{ width: `${(streak / 9) * 100}%` }}
+          animate={{ width: `${(streak / totalMatches) * 100}%` }}
           transition={{ duration: 0.3 }}
         />
       </div>
 
-      {/* 9 Stages Stepper Indicator */}
-      <div className="grid grid-cols-9 gap-1 px-1">
+      {/* Dynamic Stages Stepper Indicator */}
+      <div
+        className="gap-1 px-1"
+        style={{ display: "grid", gridTemplateColumns: `repeat(${totalMatches}, minmax(0, 1fr))` }}
+      >
         {WORLD_CUP_SCHEDULE.map((m, idx) => (
           <div
             key={m.id}
@@ -233,7 +238,7 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
                 {currentOpponent.stageName}
               </span>
               <span className="text-xs font-mono font-bold tracking-widest text-slate-400 uppercase">
-                Match #{currentMatchIndex + 1} of 9
+                Match #{currentMatchIndex + 1} of {totalMatches}
               </span>
             </div>
 
@@ -309,7 +314,7 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
               <Skull className="w-8 h-8" />
             </div>
 
-            <h3 className="text-3xl font-black text-white">THE 9 - 0 DREAM IS OVER</h3>
+            <h3 className="text-3xl font-black text-white">THE {totalMatches} - 0 DREAM IS OVER</h3>
             <p className="text-sm text-slate-300 max-w-md">
               Knocked out in <span className="font-bold text-amber-300">{currentOpponent.stageName}</span> (Match #{activeResult.matchNumber}) by <span className="font-bold text-red-400">{activeResult.opponentName}</span>.
             </p>
@@ -352,10 +357,10 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
             </div>
 
             <h3 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400">
-              9 - 0 UNBEATEN WORLD CHAMPIONS
+              {totalMatches} - 0 UNBEATEN WORLD CHAMPIONS
             </h3>
             <p className="text-sm text-slate-200 max-w-md">
-              Flawless campaign! You conquered the Group Stage, Super 8s, Semi-Final, and lifted the World Cup trophy with a perfect 9–0 clean sweep!
+              Flawless campaign! You conquered the Group Stage, Super 8s, Semi-Final, and lifted the World Cup trophy with a perfect {totalMatches}–0 clean sweep!
             </p>
 
             <button

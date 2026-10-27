@@ -18,36 +18,26 @@ export interface OpponentTeamProfile {
 }
 
 /**
- * Authentic 9-match tournament schedule mirroring the T20 World Cup championship path.
+ * Authentic 7-match tournament schedule mirroring the T20 World Cup championship path:
+ * 2 Group Stage matches, 3 Super 8 matches, 1 Semi-Final, and The Final.
  */
 export const WORLD_CUP_SCHEDULE: OpponentTeamProfile[] = [
-  // Stage 1: Group Stage (Matches 1-4)
+  // Stage 1: Group Stage (2 Matches)
   {
     id: "match_1",
     stageName: "GROUP STAGE",
     matchNumber: 1,
-    name: "Ireland T20",
-    countryCode: "IRE",
+    name: "USA T20",
+    countryCode: "USA",
     difficultyTier: "NORMAL",
     battingOvr: 81,
-    bowlingOvr: 81,
-    starPlayer: "P. Stirling",
+    bowlingOvr: 82,
+    starPlayer: "S. Netravalkar",
   },
   {
     id: "match_2",
     stageName: "GROUP STAGE",
     matchNumber: 2,
-    name: "USA T20",
-    countryCode: "USA",
-    difficultyTier: "NORMAL",
-    battingOvr: 80,
-    bowlingOvr: 82,
-    starPlayer: "S. Netravalkar",
-  },
-  {
-    id: "match_3",
-    stageName: "GROUP STAGE",
-    matchNumber: 3,
     name: "Pakistan T20",
     countryCode: "PAK",
     difficultyTier: "HIGH",
@@ -55,23 +45,12 @@ export const WORLD_CUP_SCHEDULE: OpponentTeamProfile[] = [
     bowlingOvr: 90,
     starPlayer: "Shaheen Afridi",
   },
-  {
-    id: "match_4",
-    stageName: "GROUP STAGE",
-    matchNumber: 4,
-    name: "Bangladesh T20",
-    countryCode: "BAN",
-    difficultyTier: "NORMAL",
-    battingOvr: 82,
-    bowlingOvr: 84,
-    starPlayer: "Shakib Al Hasan",
-  },
 
-  // Stage 2: Super 8 Stage (Matches 5-7) - Elevated Tournament Difficulty
+  // Stage 2: Super 8 Stage (3 Matches)
   {
-    id: "match_5",
+    id: "match_3",
     stageName: "SUPER 8",
-    matchNumber: 5,
+    matchNumber: 3,
     name: "Afghanistan T20",
     countryCode: "AFG",
     difficultyTier: "HIGH",
@@ -80,9 +59,9 @@ export const WORLD_CUP_SCHEDULE: OpponentTeamProfile[] = [
     starPlayer: "Rashid Khan",
   },
   {
-    id: "match_6",
+    id: "match_4",
     stageName: "SUPER 8",
-    matchNumber: 6,
+    matchNumber: 4,
     name: "West Indies T20",
     countryCode: "WI",
     difficultyTier: "ELITE",
@@ -91,9 +70,9 @@ export const WORLD_CUP_SCHEDULE: OpponentTeamProfile[] = [
     starPlayer: "N. Pooran",
   },
   {
-    id: "match_7",
+    id: "match_5",
     stageName: "SUPER 8",
-    matchNumber: 7,
+    matchNumber: 5,
     name: "Australia T20",
     countryCode: "AUS",
     difficultyTier: "ELITE",
@@ -102,11 +81,11 @@ export const WORLD_CUP_SCHEDULE: OpponentTeamProfile[] = [
     starPlayer: "T. Head",
   },
 
-  // Stage 3: The Knockout Semi-Final (Match 8)
+  // Stage 3: The Knockout Semi-Final (Match 6)
   {
-    id: "match_8",
+    id: "match_6",
     stageName: "SEMI-FINAL",
-    matchNumber: 8,
+    matchNumber: 6,
     name: "England T20",
     countryCode: "ENG",
     difficultyTier: "ELITE",
@@ -115,11 +94,11 @@ export const WORLD_CUP_SCHEDULE: OpponentTeamProfile[] = [
     starPlayer: "J. Buttler",
   },
 
-  // Stage 4: The T20 World Cup Final (Match 9) - Boss Tier Championship Match
+  // Stage 4: The T20 World Cup Final (Match 7) - Championship Match
   {
-    id: "match_9",
+    id: "match_7",
     stageName: "THE FINAL",
-    matchNumber: 9,
+    matchNumber: 7,
     name: "South Africa T20",
     countryCode: "SA",
     difficultyTier: "CHAMPION",
@@ -311,9 +290,9 @@ export function simulateFixture(
     effectiveUserBowling -= 8;
   }
 
-  // Tournament stage pressure: Super 8 (Matches 5-7), Semi-Final (8), Final (9)
-  const isKnockoutStage = matchNumber >= 5;
-  const stagePressurePenalty = isKnockoutStage ? (matchNumber >= 8 ? 4 : 2) : 0;
+  // Tournament stage pressure: Super 8 (Matches 3-5), Semi-Final (6), Final (7)
+  const isKnockoutStage = matchNumber >= 3;
+  const stagePressurePenalty = isKnockoutStage ? (matchNumber >= 6 ? 4 : 2) : 0;
 
   // Weak bowling leakage in death overs against elite tournament batters
   const weakBowlersCount = squad.players

@@ -85,12 +85,26 @@ describe("T20 Match Simulator Engine (9-0 Championship Path & Strict Quotas)", (
     expect(result.marginDescription.length).toBeGreaterThan(0);
   });
 
-  it("contains an intensified, high-difficulty 9-match World Cup gauntlet", () => {
-    expect(WORLD_CUP_SCHEDULE.length).toBe(9);
-    // Knockout opponents must test championship mettle
-    const finalMatch = WORLD_CUP_SCHEDULE[8]; // The Final
-    const semiFinalMatch = WORLD_CUP_SCHEDULE[7]; // Semi-Final
-    const super8Matches = WORLD_CUP_SCHEDULE.slice(4, 7);
+  it("contains an intensified, high-difficulty 7-match World Cup gauntlet (2 Group, 3 Super 8, Semi, Final)", () => {
+    expect(WORLD_CUP_SCHEDULE.length).toBe(7);
+
+    // 2 Group Stage Matches
+    expect(WORLD_CUP_SCHEDULE[0].stageName).toBe("GROUP STAGE");
+    expect(WORLD_CUP_SCHEDULE[1].stageName).toBe("GROUP STAGE");
+
+    // 3 Super 8 Matches
+    expect(WORLD_CUP_SCHEDULE[2].stageName).toBe("SUPER 8");
+    expect(WORLD_CUP_SCHEDULE[3].stageName).toBe("SUPER 8");
+    expect(WORLD_CUP_SCHEDULE[4].stageName).toBe("SUPER 8");
+
+    // Knockout Semi-Final & The Final
+    expect(WORLD_CUP_SCHEDULE[5].stageName).toBe("SEMI-FINAL");
+    expect(WORLD_CUP_SCHEDULE[6].stageName).toBe("THE FINAL");
+    expect(WORLD_CUP_SCHEDULE[6].difficultyTier).toBe("CHAMPION");
+
+    const finalMatch = WORLD_CUP_SCHEDULE[6]; // The Final
+    const semiFinalMatch = WORLD_CUP_SCHEDULE[5]; // Semi-Final
+    const super8Matches = WORLD_CUP_SCHEDULE.slice(2, 5);
 
     expect(finalMatch.battingOvr).toBeGreaterThanOrEqual(93);
     expect(finalMatch.bowlingOvr).toBeGreaterThanOrEqual(93);
@@ -127,11 +141,11 @@ describe("T20 Match Simulator Engine (9-0 Championship Path & Strict Quotas)", (
     // The upside-down squad must have a drastically lower teamBattingOvr than optimal
     expect(upsideDownEvaluation.teamBattingOvr).toBeLessThan(optimalEvaluation.teamBattingOvr - 15);
 
-    // Against an elite opponent (e.g. Australia in Match 7), upside-down squad should lose consistently
-    const eliteOpponent = WORLD_CUP_SCHEDULE[6]; // Australia (Bat: 89, Bowl: 89)
+    // Against an elite opponent (e.g. Australia in Match 5), upside-down squad should lose consistently
+    const eliteOpponent = WORLD_CUP_SCHEDULE[4]; // Australia (Bat: 92, Bowl: 92)
     let upsideDownLosses = 0;
     for (let sim = 0; sim < 20; sim++) {
-      const match = simulateFixture(upsideDownEvaluation, eliteOpponent, 7);
+      const match = simulateFixture(upsideDownEvaluation, eliteOpponent, 5);
       if (!match.userWon) upsideDownLosses++;
     }
 
