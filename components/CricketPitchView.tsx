@@ -68,11 +68,11 @@ export const CricketPitchView: React.FC<CricketPitchViewProps> = ({
         key={player.id}
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className={`relative p-2.5 sm:p-3 rounded-xl bg-slate-950/85 border ${
+        className={`relative p-2 sm:p-3 rounded-xl bg-slate-950/85 border ${
           mismatch.isMismatch
             ? "border-red-500/60 shadow-red-500/20 shadow-md"
             : "border-white/20 hover:border-white/40 shadow-lg"
-        } backdrop-blur-md flex flex-col gap-1 min-w-[130px] sm:min-w-[155px] max-w-[180px] transition group select-none`}
+        } backdrop-blur-md flex flex-col gap-1 w-full min-w-[110px] max-w-[175px] transition group select-none`}
       >
         {/* Top Header: Batting Order # and OVR Badge */}
         <div className="flex items-center justify-between gap-1.5 border-b border-white/10 pb-1.5">
@@ -120,12 +120,12 @@ export const CricketPitchView: React.FC<CricketPitchViewProps> = ({
   const renderEmptySlot = (label: string, roleBadge: string, key: string) => (
     <div
       key={key}
-      className="p-2.5 rounded-xl border-2 border-dashed border-white/15 bg-white/[0.03] backdrop-blur-sm flex flex-col items-center justify-center gap-1 min-w-[120px] sm:min-w-[145px] text-center"
+      className="p-2 sm:p-2.5 rounded-xl border-2 border-dashed border-white/15 bg-white/[0.03] backdrop-blur-sm flex flex-col items-center justify-center gap-1 w-full min-w-[105px] max-w-[160px] text-center"
     >
       <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-white/10 text-slate-400">
         {roleBadge}
       </span>
-      <span className="text-[11px] font-mono text-slate-400 font-medium">{label}</span>
+      <span className="text-[10px] sm:text-[11px] font-mono text-slate-400 font-medium truncate max-w-full px-1">{label}</span>
       <span className="text-[9px] font-mono text-slate-600">-- OVR</span>
     </div>
   );

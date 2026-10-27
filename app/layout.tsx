@@ -1,10 +1,18 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+  themeColor: "#020617",
+};
+
 export const metadata: Metadata = {
   title: "Cricket 9 - 0 | T20 World Cup Invincible Draft",
-  description: "Draft an all-time Starting XI from 10 T20 World Cup editions and simulate a flawless 9-0 championship campaign.",
+  description: "Draft an all-time Starting XI from 10 T20 World Cup editions and simulate a flawless championship campaign.",
 };
 
 /**

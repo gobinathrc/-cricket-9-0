@@ -48,8 +48,8 @@ export const LeagueTable: React.FC<LeagueTableProps> = ({
         </div>
       </div>
 
-      {/* Standings Grid */}
-      <div className="overflow-x-auto w-full">
+      {/* Standings Grid with Mobile Momentum Touch Scrolling */}
+      <div className="overflow-x-auto w-full overscroll-x-contain touch-pan-x scrollbar-thin">
         <table className="w-full text-left border-collapse text-xs">
           <thead>
             <tr className="border-b border-white/10 text-slate-400 font-mono text-[11px] uppercase tracking-wider bg-black/20">

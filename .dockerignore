@@ -1,0 +1,16 @@
+Dockerfile
+.dockerignore
+docker-compose.yml
+node_modules
+npm-debug.log
+yarn-error.log
+.next
+out
+.git
+.gitignore
+.env*.local
+.env
+tests
+vitest.config.ts
+*.md
+.gemini

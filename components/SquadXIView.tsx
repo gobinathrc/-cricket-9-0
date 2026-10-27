@@ -483,30 +483,34 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({
                         </div>
                       </div>
 
-                      {/* Step Up / Down Buttons for Click Reordering */}
+                      {/* Step Up / Down Buttons for Click & Mobile Touch Reordering */}
                       {onReorderLineup && draftedPlayers.length > 1 && (
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
                           <button
+                            type="button"
                             disabled={index === 0}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleMoveUp(index);
                             }}
-                            className="p-1 rounded bg-white/5 hover:bg-amber-400/20 text-slate-400 hover:text-amber-300 disabled:opacity-20 border border-white/10 transition"
+                            className="p-2 sm:p-1.5 rounded-lg bg-white/10 hover:bg-amber-400/20 active:bg-amber-400/30 text-slate-300 hover:text-amber-300 disabled:opacity-20 border border-white/15 transition touch-manipulation min-w-[32px] min-h-[32px] flex items-center justify-center"
                             title="Move up in batting lineup"
+                            aria-label={`Move ${player.name} up in batting lineup`}
                           >
-                            <ArrowUp className="w-3.5 h-3.5" />
+                            <ArrowUp className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                           </button>
                           <button
+                            type="button"
                             disabled={index === draftedPlayers.length - 1}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleMoveDown(index);
                             }}
-                            className="p-1 rounded bg-white/5 hover:bg-amber-400/20 text-slate-400 hover:text-amber-300 disabled:opacity-20 border border-white/10 transition"
+                            className="p-2 sm:p-1.5 rounded-lg bg-white/10 hover:bg-amber-400/20 active:bg-amber-400/30 text-slate-300 hover:text-amber-300 disabled:opacity-20 border border-white/15 transition touch-manipulation min-w-[32px] min-h-[32px] flex items-center justify-center"
                             title="Move down in batting lineup"
+                            aria-label={`Move ${player.name} down in batting lineup`}
                           >
-                            <ArrowDown className="w-3.5 h-3.5" />
+                            <ArrowDown className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
                           </button>
                         </div>
                       )}
