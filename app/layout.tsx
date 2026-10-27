@@ -3,8 +3,8 @@ import "./globals.css";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 
 export const metadata: Metadata = {
-  title: "Cricket 72 - 0 | T20 World Cup Invincible Draft",
-  description: "Draft an all-time Starting XI from 10 T20 World Cup editions and simulate 72 consecutive matches undefeated.",
+  title: "Cricket 9 - 0 | T20 World Cup Invincible Draft",
+  description: "Draft an all-time Starting XI from 10 T20 World Cup editions and simulate a flawless 9-0 championship campaign.",
 };
 
 /**

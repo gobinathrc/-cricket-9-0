@@ -77,11 +77,11 @@ export default function HomePage() {
           </div>
         </div>
       ) : (
-        /* Draft Complete -> The 72-0 Gauntlet Runner */
+        /* Draft Complete -> The 9-0 Championship Gauntlet */
         <div className="w-full flex flex-col items-center gap-8 mt-6">
           <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-mono font-bold tracking-wider">
             <Swords className="w-4 h-4" />
-            STARTING XI LOCKED · ENTERING THE 72-0 GAUNTLET
+            STARTING XI LOCKED · ENTERING THE 9-0 WORLD CUP GAUNTLET
           </div>
 
           <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">

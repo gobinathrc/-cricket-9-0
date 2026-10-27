@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { evaluateSquadTactics, GAUNTLET_SCHEDULE, simulateFixture } from "../engine/simulator";
+import { evaluateSquadTactics, WORLD_CUP_SCHEDULE, simulateFixture } from "../engine/simulator";
 import { PlayerEditionRecord } from "../types/cricket";
 
-describe("T20 Match Simulator Engine", () => {
+describe("T20 Match Simulator Engine (9-0 Championship Path)", () => {
   const dummyPlayer = (
     id: string,
     athleteId: string,
@@ -52,7 +52,6 @@ describe("T20 Match Simulator Engine", () => {
   });
 
   it("identifies missing wicketkeeper and bowler deficit penalties", () => {
-    // Squad with 11 pure batters and no wicketkeeper or bowlers
     const allBatters = Array.from({ length: 11 }).map((_, i) =>
       dummyPlayer(`bat_${i}`, `ath_bat_${i}`, "BAT", "NONE", 85)
     );
@@ -65,7 +64,7 @@ describe("T20 Match Simulator Engine", () => {
 
   it("simulates a fixture and produces realistic scores and valid win/loss state", () => {
     const squad = evaluateSquadTactics(balancedSquadPlayers);
-    const opponent = GAUNTLET_SCHEDULE[0]; // Netherlands
+    const opponent = WORLD_CUP_SCHEDULE[0]; // Ireland
 
     const result = simulateFixture(squad, opponent, 1);
     expect(result.matchNumber).toBe(1);
@@ -77,9 +76,14 @@ describe("T20 Match Simulator Engine", () => {
     expect(result.marginDescription.length).toBeGreaterThan(0);
   });
 
-  it("contains all 72 fixtures in the gauntlet schedule terminating with the Boss fixture", () => {
-    expect(GAUNTLET_SCHEDULE.length).toBe(72);
-    expect(GAUNTLET_SCHEDULE[71].id).toBe("opp_72");
-    expect(GAUNTLET_SCHEDULE[71].difficultyTier).toBe("CHAMPION");
+  it("contains exactly 9 fixtures structured through Group, Super 8, Semi-Final, and The Final", () => {
+    expect(WORLD_CUP_SCHEDULE.length).toBe(9);
+    expect(WORLD_CUP_SCHEDULE[0].stageName).toBe("GROUP STAGE");
+    expect(WORLD_CUP_SCHEDULE[3].stageName).toBe("GROUP STAGE");
+    expect(WORLD_CUP_SCHEDULE[4].stageName).toBe("SUPER 8");
+    expect(WORLD_CUP_SCHEDULE[6].stageName).toBe("SUPER 8");
+    expect(WORLD_CUP_SCHEDULE[7].stageName).toBe("SEMI-FINAL");
+    expect(WORLD_CUP_SCHEDULE[8].stageName).toBe("THE FINAL");
+    expect(WORLD_CUP_SCHEDULE[8].difficultyTier).toBe("CHAMPION");
   });
 });

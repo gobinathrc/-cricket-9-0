@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import confetti from "canvas-confetti";
-import { Play, Pause, FastForward, RotateCcw, Trophy, Skull, ShieldAlert } from "lucide-react";
-import { evaluateSquadTactics, GAUNTLET_SCHEDULE, simulateFixture } from "../engine/simulator";
+import { Play, Pause, FastForward, RotateCcw, Trophy, Skull } from "lucide-react";
+import { evaluateSquadTactics, WORLD_CUP_SCHEDULE, simulateFixture } from "../engine/simulator";
 import { MatchResult, PlayerEditionRecord } from "../types/cricket";
 import { logInfo } from "../utils/logger";
 
@@ -14,8 +14,8 @@ interface GauntletRunnerProps {
 }
 
 /**
- * Interactive 72-match gauntlet runner.
- * Simulates fixtures sequentially against international opponents while tracking undefeated streaks.
+ * Interactive 9-match World Cup tournament runner.
+ * Simulates fixtures sequentially through Group Stage, Super 8s, Semi-Final, and Final.
  *
  * @param props - GauntletRunnerProps
  */
@@ -25,7 +25,7 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
 }) => {
   const squad = evaluateSquadTactics(draftedPlayers);
 
-  const [currentMatchIndex, setCurrentMatchIndex] = useState(0); // 0 to 71
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0); // 0 to 8
   const [matchHistory, setMatchHistory] = useState<MatchResult[]>([]);
   const [activeResult, setActiveResult] = useState<MatchResult | null>(null);
   const [isAutoPlaying, setIsAutoPlaying] = useState(false);
@@ -37,10 +37,10 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
   autoPlayRef.current = isAutoPlaying;
 
   const runSingleMatch = () => {
-    if (runFailed || isChampion || currentMatchIndex >= 72 || isSimulatingCurrent) return;
+    if (runFailed || isChampion || currentMatchIndex >= 9 || isSimulatingCurrent) return;
 
     setIsSimulatingCurrent(true);
-    const opponent = GAUNTLET_SCHEDULE[currentMatchIndex];
+    const opponent = WORLD_CUP_SCHEDULE[currentMatchIndex];
     const matchNumber = currentMatchIndex + 1;
 
     setTimeout(() => {
@@ -52,34 +52,33 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
       if (!result.userWon) {
         setIsAutoPlaying(false);
         setRunFailed(true);
-        logInfo(`72-0 Run failed at match ${matchNumber}`, { opponent: opponent.name });
+        logInfo(`9-0 Run failed at match ${matchNumber} (${opponent.stageName})`, { opponent: opponent.name });
       } else {
         const nextIndex = currentMatchIndex + 1;
         setCurrentMatchIndex(nextIndex);
 
-        if (nextIndex === 72) {
+        if (nextIndex === 9) {
           setIsAutoPlaying(false);
           setIsChampion(true);
-          confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
-          logInfo("User completed 72-0 INVINCIBLE RUN!");
+          confetti({ particleCount: 200, spread: 90, origin: { y: 0.55 } });
+          logInfo("User completed 9-0 UNDEFEATED WORLD CUP CAMPAIGN!");
         }
       }
-    }, 600);
+    }, 700);
   };
 
-  // Auto-play loop
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (isAutoPlaying && !runFailed && !isChampion && currentMatchIndex < 72) {
+    if (isAutoPlaying && !runFailed && !isChampion && currentMatchIndex < 9) {
       timer = setTimeout(() => {
         runSingleMatch();
-      }, 850);
+      }, 1000);
     }
     return () => clearTimeout(timer);
   }, [isAutoPlaying, currentMatchIndex, runFailed, isChampion]);
 
   const streak = currentMatchIndex;
-  const currentOpponent = GAUNTLET_SCHEDULE[currentMatchIndex] || GAUNTLET_SCHEDULE[71];
+  const currentOpponent = WORLD_CUP_SCHEDULE[currentMatchIndex] || WORLD_CUP_SCHEDULE[8];
 
   return (
     <div className="flex flex-col gap-6 w-full max-w-3xl mx-auto">
@@ -87,13 +86,13 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
       <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-slate-900/80 border border-white/15 rounded-3xl backdrop-blur-2xl shadow-2xl gap-4">
         <div className="flex flex-col">
           <span className="text-xs font-mono uppercase tracking-widest text-amber-400 font-bold">
-            The 72 - 0 Gauntlet
+            The 9 - 0 Championship Path
           </span>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="text-4xl sm:text-5xl font-black font-mono text-white tracking-tight">
               {streak} - 0
             </span>
-            <span className="text-sm font-mono text-slate-400">/ 72</span>
+            <span className="text-sm font-mono text-slate-400">/ 9 WINS</span>
           </div>
         </div>
 
@@ -134,22 +133,45 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
         </div>
       </div>
 
-      {/* Progress Bar towards 72 */}
-      <div className="w-full bg-slate-800/60 rounded-full h-2 overflow-hidden border border-white/5">
+      {/* Progress Bar towards 9 */}
+      <div className="w-full bg-slate-800/60 rounded-full h-2.5 overflow-hidden border border-white/5">
         <motion.div
           className="bg-gradient-to-r from-emerald-500 via-teal-400 to-amber-400 h-full rounded-full"
-          animate={{ width: `${(streak / 72) * 100}%` }}
+          animate={{ width: `${(streak / 9) * 100}%` }}
           transition={{ duration: 0.3 }}
         />
+      </div>
+
+      {/* 9 Stages Stepper Indicator */}
+      <div className="grid grid-cols-9 gap-1 px-1">
+        {WORLD_CUP_SCHEDULE.map((m, idx) => (
+          <div
+            key={m.id}
+            className={`h-1.5 rounded-full transition-colors ${
+              idx < streak
+                ? "bg-emerald-400"
+                : idx === streak
+                ? "bg-amber-400 animate-pulse"
+                : "bg-slate-800"
+            }`}
+            title={`Match ${idx + 1}: ${m.stageName} vs ${m.name}`}
+          />
+        ))}
       </div>
 
       {/* Active Match Arena Card */}
       {!runFailed && !isChampion && (
         <div className="p-8 bg-slate-900/60 border border-white/10 rounded-3xl backdrop-blur-xl relative overflow-hidden flex flex-col gap-6 shadow-xl">
           <div className="flex items-center justify-between pb-4 border-b border-white/10">
-            <span className="text-xs font-mono font-bold tracking-widest text-slate-400 uppercase">
-              Match #{currentMatchIndex + 1}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold font-mono bg-white/10 text-amber-300 border border-white/10">
+                {currentOpponent.stageName}
+              </span>
+              <span className="text-xs font-mono font-bold tracking-widest text-slate-400 uppercase">
+                Match #{currentMatchIndex + 1} of 9
+              </span>
+            </div>
+
             <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold font-mono ${
               currentOpponent.difficultyTier === "CHAMPION"
                 ? "bg-red-500/20 text-red-300 border border-red-500/30"
@@ -222,9 +244,9 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
               <Skull className="w-8 h-8" />
             </div>
 
-            <h3 className="text-3xl font-black text-white">THE 72 - 0 DREAM IS OVER</h3>
+            <h3 className="text-3xl font-black text-white">THE 9 - 0 DREAM IS OVER</h3>
             <p className="text-sm text-slate-300 max-w-md">
-              Defeated on Match #{activeResult.matchNumber} by <span className="font-bold text-red-400">{activeResult.opponentName}</span>.
+              Knocked out in <span className="font-bold text-amber-300">{currentOpponent.stageName}</span> (Match #{activeResult.matchNumber}) by <span className="font-bold text-red-400">{activeResult.opponentName}</span>.
             </p>
 
             <div className="p-4 rounded-2xl bg-black/40 border border-white/10 w-full max-w-md text-left font-mono text-xs flex flex-col gap-2">
@@ -265,10 +287,10 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
             </div>
 
             <h3 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400">
-              72 - 0 UNBEATEN LEGEND
+              9 - 0 UNBEATEN WORLD CHAMPIONS
             </h3>
             <p className="text-sm text-slate-200 max-w-md">
-              You achieved the impossible: 72 consecutive victories without a single loss across all historical and modern opponents!
+              Flawless campaign! You conquered the Group Stage, Super 8s, Semi-Final, and lifted the World Cup trophy with a perfect 9–0 clean sweep!
             </p>
 
             <button

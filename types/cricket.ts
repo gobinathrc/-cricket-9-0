@@ -111,7 +111,7 @@ export interface MatchResult {
 export interface GauntletRunState {
   currentStreak: number;
   maxStreak: number;
-  targetStreak: number; // 72
+  targetStreak: number; // 9
   status: "DRAFTING" | "READY_TO_SIMULATE" | "SIMULATING" | "FAILED" | "COMPLETED";
   completedMatches: MatchResult[];
   lastMatch?: MatchResult;
