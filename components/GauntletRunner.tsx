@@ -313,7 +313,10 @@ export const GauntletRunner: React.FC<GauntletRunnerProps> = ({
       </div>
 
       {/* 14 Matchdays Stepper Indicator */}
-      <div className="grid grid-cols-14 gap-1 px-1">
+      <div
+        className="gap-1 px-1 w-full"
+        style={{ display: "grid", gridTemplateColumns: "repeat(14, minmax(0, 1fr))" }}
+      >
         {Array.from({ length: 14 }).map((_, idx) => (
           <div
             key={idx}
