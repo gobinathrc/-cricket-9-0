@@ -106,18 +106,18 @@ describe("Next.js Backend API Route Handlers", () => {
   });
 
   it("POST /api/simulate executes match on server and returns match result", async () => {
-    // 11 dummy players
+    // 11 dummy players meeting strict composition: 1 WK, 4 BAT, 2 AR, 4 BOWL
     const players = Array.from({ length: 11 }).map((_, i) => ({
       id: `p_${i}`,
       athleteId: `ath_${i}`,
       name: `Player ${i}`,
       countryCode: "IND",
       editionYear: 2024,
-      role: i === 0 ? "WK" : i < 6 ? "BAT" : "BOWL",
+      role: i === 0 ? "WK" : i < 5 ? "BAT" : i < 7 ? "AR" : "BOWL",
       battingStyle: "RHB",
-      bowlingType: i >= 6 ? "FAST" : "NONE",
+      bowlingType: i >= 5 ? "FAST" : "NONE",
       ovr: 88,
-      subRatings: { batting: 88, bowling: i >= 6 ? 88 : 50, paceOrTurn: 85, clutch: 88 },
+      subRatings: { batting: 88, bowling: i >= 5 ? 88 : 50, paceOrTurn: 85, clutch: 88 },
       tournamentStats: { runs: 100, ballsFaced: 70, strikeRate: 140, average: 30, wickets: 5, oversBowled: 15, economy: 7.0 },
     }));
 

@@ -74,10 +74,14 @@ export interface TournamentSquad {
  */
 export interface DraftedSquad {
   players: PlayerEditionRecord[];
+  wkCount: number;
+  batCount: number;
+  arCount: number;
+  bowlCount: number;
   hasWicketKeeper: boolean;
-  bowlerCount: number; // Total eligible bowlers (BOWL + AR)
-  spinnerCount: number;
-  pacerCount: number;
+  bowlerCount: number;
+  hasRequiredRoles: boolean; // Enforces: WK >= 1, BAT >= 4, AR >= 2, BOWL >= 3
+  missingRoleDescriptions: string[];
   isBalancedAttack: boolean; // At least 1 spinner and at least 2 pacers
   teamBattingOvr: number;
   teamBowlingOvr: number;

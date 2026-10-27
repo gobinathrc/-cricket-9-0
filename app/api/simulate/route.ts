@@ -40,6 +40,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const matchNumber = body.matchIndex + 1;
 
     const squad = evaluateSquadTactics(body.draftedPlayers);
+
+    if (!squad.hasRequiredRoles) {
+      logWarn("API: Simulation rejected - Squad failed required tactical composition", {
+        missing: squad.missingRoleDescriptions,
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Invalid Starting XI composition: ${squad.missingRoleDescriptions.join(". ")}. (Requires at least 1 WK, 4 BAT, 2 AR, 3 BOWL).`,
+        },
+        { status: 422 }
+      );
+    }
+
     const result = simulateFixture(squad, opponent, matchNumber);
 
     const isChampion = result.userWon && matchNumber === 9;

@@ -10,7 +10,8 @@ interface SquadXIViewProps {
 }
 
 /**
- * Tactical Starting XI dashboard displaying player cards, roles, and composition checklist.
+ * Tactical Starting XI dashboard displaying player cards, roles, and strict composition checklist.
+ * Enforces the minimum quota: at least 1 WK, 4 BAT, 2 AR, and 3 BOWL.
  *
  * @param props - SquadXIViewProps
  */
@@ -49,46 +50,65 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({ draftedPlayers }) => {
         </div>
       </div>
 
-      {/* Tactical Balance Checklist */}
-      <div className="p-4 rounded-2xl bg-slate-900/40 border border-white/10 backdrop-blur-md flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-1.5">
-          {squad.hasWicketKeeper ? (
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          ) : (
-            <AlertTriangle className="w-4 h-4 text-amber-400" />
-          )}
-          <span className={squad.hasWicketKeeper ? "text-slate-200" : "text-amber-300"}>
-            Wicketkeeper ({squad.hasWicketKeeper ? "Active" : "Missing -4 Penalty"})
+      {/* Mandatory Role Quotas Banner */}
+      <div className="p-4 rounded-2xl bg-slate-900/80 border border-white/15 backdrop-blur-md flex flex-col gap-3">
+        <div className="flex items-center justify-between pb-2 border-b border-white/10">
+          <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300">
+            Mandatory Role Quotas ({draftedPlayers.length}/11)
           </span>
+          {squad.hasRequiredRoles ? (
+            <span className="flex items-center gap-1 text-[11px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+              <CheckCircle2 className="w-3.5 h-3.5" /> QUOTAS MET
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 text-[11px] font-mono font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+              <AlertTriangle className="w-3.5 h-3.5" /> INCOMPLETE
+            </span>
+          )}
         </div>
 
-        <div className="flex items-center gap-1.5">
-          {squad.bowlerCount >= 5 ? (
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          ) : (
-            <AlertTriangle className="w-4 h-4 text-amber-400" />
-          )}
-          <span className={squad.bowlerCount >= 5 ? "text-slate-200" : "text-amber-300"}>
-            Bowlers: {squad.bowlerCount}/5 Required
-          </span>
+        {/* Role Counters Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-mono">
+          <div className={`p-2.5 rounded-xl border flex items-center justify-between ${
+            squad.wkCount >= 1 ? "bg-purple-500/10 border-purple-500/30 text-purple-200" : "bg-white/5 border-white/10 text-slate-400"
+          }`}>
+            <span>WK (Min 1):</span>
+            <span className="font-bold text-sm">{squad.wkCount}/1</span>
+          </div>
+
+          <div className={`p-2.5 rounded-xl border flex items-center justify-between ${
+            squad.batCount >= 4 ? "bg-blue-500/10 border-blue-500/30 text-blue-200" : "bg-white/5 border-white/10 text-slate-400"
+          }`}>
+            <span>BAT (Min 4):</span>
+            <span className="font-bold text-sm">{squad.batCount}/4</span>
+          </div>
+
+          <div className={`p-2.5 rounded-xl border flex items-center justify-between ${
+            squad.arCount >= 2 ? "bg-amber-500/10 border-amber-500/30 text-amber-200" : "bg-white/5 border-white/10 text-slate-400"
+          }`}>
+            <span>AR (Min 2):</span>
+            <span className="font-bold text-sm">{squad.arCount}/2</span>
+          </div>
+
+          <div className={`p-2.5 rounded-xl border flex items-center justify-between ${
+            squad.bowlCount >= 3 ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-200" : "bg-white/5 border-white/10 text-slate-400"
+          }`}>
+            <span>BOWL (Min 3):</span>
+            <span className="font-bold text-sm">{squad.bowlCount}/3</span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          {squad.isBalancedAttack ? (
-            <ShieldCheck className="w-4 h-4 text-sky-400" />
-          ) : (
-            <Zap className="w-4 h-4 text-slate-500" />
-          )}
-          <span className={squad.isBalancedAttack ? "text-sky-300 font-semibold" : "text-slate-400"}>
-            Attack Diversity ({squad.pacerCount} Pace, {squad.spinnerCount} Spin)
-          </span>
-        </div>
+        {squad.missingRoleDescriptions.length > 0 && draftedPlayers.length >= 8 && (
+          <div className="p-2 rounded-lg bg-amber-500/15 border border-amber-500/30 text-[11px] font-mono text-amber-300">
+            ⚠ Still needed before simulation: {squad.missingRoleDescriptions.join(" · ")}
+          </div>
+        )}
       </div>
 
       {/* Starting XI Roster Slots */}
       <div className="flex flex-col gap-2">
         <h4 className="text-sm font-semibold uppercase tracking-wider font-mono text-slate-400 px-1">
-          Starting XI Slots ({draftedPlayers.length}/11)
+          Starting XI Roster ({draftedPlayers.length}/11)
         </h4>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
@@ -128,7 +148,9 @@ export const SquadXIView: React.FC<SquadXIViewProps> = ({ draftedPlayers }) => {
                 className="p-3 rounded-xl border border-dashed border-white/10 bg-white/[0.02] flex items-center justify-between text-slate-600"
               >
                 <span className="text-xs font-mono font-bold w-4">#{index + 1}</span>
-                <span className="text-xs font-mono">Empty Slot</span>
+                <span className="text-xs font-mono">
+                  {index === 0 ? "WK Slot" : index < 5 ? "Batter Slot" : index < 7 ? "All-Rounder Slot" : index < 10 ? "Bowler Slot" : "Flex Slot"}
+                </span>
                 <span className="text-xs font-mono">--</span>
               </div>
             );

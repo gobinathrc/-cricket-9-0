@@ -130,16 +130,26 @@ export const WORLD_CUP_SCHEDULE: OpponentTeamProfile[] = [
 
 /**
  * Inspects a drafted 11-player squad to evaluate tactical viability and composition balance.
+ * Enforces the strict rule: at least 1 WK, 4 BAT, 2 AR, and 3 BOWL (with 1 Flex slot).
  *
  * @param players - Array of 11 drafted player records.
  * @returns Evaluated DraftedSquad entity.
  */
 export function evaluateSquadTactics(players: PlayerEditionRecord[]): DraftedSquad {
-  const hasWicketKeeper = players.some((p) => p.role === "WK");
+  const wkCount = players.filter((p) => p.role === "WK").length;
+  const batCount = players.filter((p) => p.role === "BAT").length;
+  const arCount = players.filter((p) => p.role === "AR").length;
+  const bowlCount = players.filter((p) => p.role === "BOWL").length;
+
+  const missingRoleDescriptions: string[] = [];
+  if (wkCount < 1) missingRoleDescriptions.push("Need at least 1 Wicketkeeper (WK)");
+  if (batCount < 4) missingRoleDescriptions.push(`Need at least 4 Batsmen (Current: ${batCount}/4)`);
+  if (arCount < 2) missingRoleDescriptions.push(`Need at least 2 All-Rounders (Current: ${arCount}/2)`);
+  if (bowlCount < 3) missingRoleDescriptions.push(`Need at least 3 Bowlers (Current: ${bowlCount}/3)`);
+
+  const hasRequiredRoles = wkCount >= 1 && batCount >= 4 && arCount >= 2 && bowlCount >= 3;
 
   const eligibleBowlers = players.filter((p) => p.role === "BOWL" || p.role === "AR");
-  const bowlerCount = eligibleBowlers.length;
-
   const spinnerCount = eligibleBowlers.filter(
     (p) => p.bowlingType === "SPIN_OFF" || p.bowlingType === "SPIN_LEG"
   ).length;
@@ -166,10 +176,14 @@ export function evaluateSquadTactics(players: PlayerEditionRecord[]): DraftedSqu
 
   return {
     players,
-    hasWicketKeeper,
-    bowlerCount,
-    spinnerCount,
-    pacerCount,
+    wkCount,
+    batCount,
+    arCount,
+    bowlCount,
+    hasWicketKeeper: wkCount >= 1,
+    bowlerCount: bowlCount,
+    hasRequiredRoles,
+    missingRoleDescriptions,
     isBalancedAttack,
     teamBattingOvr,
     teamBowlingOvr,
@@ -192,18 +206,18 @@ export function simulateFixture(
 ): MatchResult {
   let effectiveUserBowling = squad.teamBowlingOvr;
 
-  if (squad.bowlerCount < 5) {
-    const missing = 5 - squad.bowlerCount;
-    effectiveUserBowling -= missing * 6;
-    logWarn(`Squad lacks 5 bowlers in Match ${matchNumber}; applying penalty`, { missing });
+  if (squad.bowlCount < 3) {
+    const missing = 3 - squad.bowlCount;
+    effectiveUserBowling -= missing * 8;
+    logWarn(`Squad lacks 3 frontline bowlers in Match ${matchNumber}; applying penalty`, { missing });
   }
 
   if (squad.isBalancedAttack) {
     effectiveUserBowling += 2;
   }
 
-  if (!squad.hasWicketKeeper) {
-    effectiveUserBowling -= 4;
+  if (squad.wkCount < 1) {
+    effectiveUserBowling -= 6;
   }
 
   // 1. User Batting Inning
