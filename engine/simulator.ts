@@ -216,11 +216,13 @@ export function evaluateSquadTactics(
 
 /**
  * Simulates a single fixture in the 9-match World Cup tournament.
+ * Models authentic T20 match dynamics including toss, 1st innings target setting,
+ * and 2nd innings target chasing with realistic wickets, overs, and margins.
  *
  * @param squad - User's tactical squad.
  * @param opponent - Opponent team profile.
  * @param matchNumber - 1-indexed fixture counter.
- * @returns MatchResult detailing scores, wickets, and victory state.
+ * @returns MatchResult detailing scores, wickets, overs, and victory state.
  */
 export function simulateFixture(
   squad: DraftedSquad,
@@ -244,42 +246,95 @@ export function simulateFixture(
     effectiveUserBowling -= 6;
   }
 
-  // 1. User Batting Inning
-  const batDelta = squad.teamBattingOvr - opponent.bowlingOvr;
-  const userBaseRuns = 165 + batDelta * 1.25;
-  const userRandomVariance = (Math.random() - 0.5) * 26;
-  const userRuns = Math.round(Math.max(110, Math.min(235, userBaseRuns + userRandomVariance)));
+  // Coin Toss: 50% user bats first, 50% opponent bats first
+  const userBatsFirst = Math.random() >= 0.5;
 
-  const userWickets = Math.round(
-    Math.max(1, Math.min(10, 5.5 - batDelta * 0.08 + (Math.random() - 0.5) * 3))
-  );
+  let userRuns: number;
+  let userWickets: number;
+  let userOvers: number;
 
-  // 2. Opponent Chasing / Batting Inning
-  const oppBatDelta = opponent.battingOvr - effectiveUserBowling;
-  const oppBaseRuns = 165 + oppBatDelta * 1.25;
-  const oppRandomVariance = (Math.random() - 0.5) * 26;
-  let oppRuns = Math.round(Math.max(105, Math.min(240, oppBaseRuns + oppRandomVariance)));
+  let oppRuns: number;
+  let oppWickets: number;
+  let oppOvers: number;
 
-  const oppWickets = Math.round(
-    Math.max(1, Math.min(10, 5.5 - oppBatDelta * 0.08 + (Math.random() - 0.5) * 3))
-  );
-
-  // 3. Resolve Outcome
   let userWon: boolean;
   let margin: string;
 
-  if (userRuns > oppRuns) {
-    userWon = true;
-    margin = `Won by ${userRuns - oppRuns} runs`;
-  } else if (oppRuns > userRuns) {
-    userWon = false;
-    const wicketsLeft = Math.max(1, 10 - oppWickets);
-    margin = `Lost by ${wicketsLeft} wickets`;
+  if (userBatsFirst) {
+    // --- User 1st Innings (Setting Target) ---
+    const batDelta = squad.teamBattingOvr - opponent.bowlingOvr;
+    const base1stRuns = 162 + batDelta * 1.8;
+    const variance1st = (Math.random() - 0.5) * 26;
+    userRuns = Math.round(Math.max(115, Math.min(230, base1stRuns + variance1st)));
+    userWickets = Math.round(Math.max(2, Math.min(10, 5.2 - batDelta * 0.12 + (Math.random() - 0.5) * 4)));
+    userOvers = userWickets === 10 ? Math.round((16 + Math.random() * 3.5) * 10) / 10 : 20;
+
+    const target = userRuns + 1;
+
+    // --- Opponent 2nd Innings (Chasing Target) ---
+    const oppChaseDelta = opponent.battingOvr - effectiveUserBowling;
+    const chaseStrength = oppChaseDelta * 1.5 - (userRuns - 160) * 0.4 + (Math.random() - 0.5) * 22;
+
+    if (chaseStrength > 0) {
+      // Opponent successfully chases target
+      userWon = false;
+      oppWickets = Math.round(Math.max(2, Math.min(9, 4.5 - oppChaseDelta * 0.1 + (Math.random() - 0.5) * 3)));
+      const extra = Math.floor(Math.random() * 4);
+      oppRuns = target + extra;
+      const ballsLeft = Math.round(Math.max(1, Math.min(18, chaseStrength * 0.6 + Math.random() * 6)));
+      const oversBowled = (120 - ballsLeft) / 6;
+      oppOvers = Math.round(oversBowled * 10) / 10;
+      margin = `Lost by ${10 - oppWickets} wickets (${ballsLeft} balls left)`;
+    } else {
+      // Opponent fails to chase target
+      userWon = true;
+      const oppDeficit = Math.round(Math.max(2, Math.min(65, -chaseStrength + Math.random() * 10)));
+      oppRuns = Math.max(95, userRuns - oppDeficit);
+      oppWickets = Math.random() > 0.4 ? 10 : Math.round(Math.max(5, Math.min(9, 7.0 - oppChaseDelta * 0.1)));
+      oppOvers = oppWickets === 10 ? Math.round((16 + Math.random() * 3.5) * 10) / 10 : 20;
+      margin = `Won by ${userRuns - oppRuns} runs`;
+    }
   } else {
-    // Super Over Resolution
-    const userSuperOverRating = (squad.teamBattingOvr + squad.teamBowlingOvr) / 2 + Math.random() * 8;
-    const oppSuperOverRating = (opponent.battingOvr + opponent.bowlingOvr) / 2 + Math.random() * 8;
-    userWon = userSuperOverRating >= oppSuperOverRating;
+    // --- Opponent 1st Innings (Setting Target) ---
+    const oppBatDelta = opponent.battingOvr - effectiveUserBowling;
+    const base1stRuns = 162 + oppBatDelta * 1.8;
+    const variance1st = (Math.random() - 0.5) * 26;
+    oppRuns = Math.round(Math.max(115, Math.min(230, base1stRuns + variance1st)));
+    oppWickets = Math.round(Math.max(2, Math.min(10, 5.2 - oppBatDelta * 0.12 + (Math.random() - 0.5) * 4)));
+    oppOvers = oppWickets === 10 ? Math.round((16 + Math.random() * 3.5) * 10) / 10 : 20;
+
+    const target = oppRuns + 1;
+
+    // --- User 2nd Innings (Chasing Target) ---
+    const userChaseDelta = squad.teamBattingOvr - opponent.bowlingOvr;
+    const chaseStrength = userChaseDelta * 1.5 - (oppRuns - 160) * 0.4 + (Math.random() - 0.5) * 22;
+
+    if (chaseStrength > 0) {
+      // User successfully chases target
+      userWon = true;
+      userWickets = Math.round(Math.max(2, Math.min(9, 4.5 - userChaseDelta * 0.1 + (Math.random() - 0.5) * 3)));
+      const extra = Math.floor(Math.random() * 4);
+      userRuns = target + extra;
+      const ballsLeft = Math.round(Math.max(1, Math.min(18, chaseStrength * 0.6 + Math.random() * 6)));
+      const oversBowled = (120 - ballsLeft) / 6;
+      userOvers = Math.round(oversBowled * 10) / 10;
+      margin = `Won by ${10 - userWickets} wickets (${ballsLeft} balls left)`;
+    } else {
+      // User fails to chase target
+      userWon = false;
+      const userDeficit = Math.round(Math.max(2, Math.min(65, -chaseStrength + Math.random() * 10)));
+      userRuns = Math.max(95, oppRuns - userDeficit);
+      userWickets = Math.random() > 0.4 ? 10 : Math.round(Math.max(5, Math.min(9, 7.0 - userChaseDelta * 0.1)));
+      userOvers = userWickets === 10 ? Math.round((16 + Math.random() * 3.5) * 10) / 10 : 20;
+      margin = `Lost by ${oppRuns - userRuns} runs`;
+    }
+  }
+
+  // Handle rare dead-tie -> Super Over
+  if (userRuns === oppRuns) {
+    const userSo = squad.teamBattingOvr + Math.random() * 10;
+    const oppSo = opponent.battingOvr + Math.random() * 10;
+    userWon = userSo >= oppSo;
     margin = userWon ? "Won via Super Over" : "Lost via Super Over";
   }
 
@@ -292,12 +347,12 @@ export function simulateFixture(
     userScore: {
       runs: userRuns,
       wickets: userWickets,
-      overs: 20,
+      overs: userOvers,
     },
     opponentScore: {
       runs: oppRuns,
       wickets: oppWickets,
-      overs: 20,
+      overs: oppOvers,
     },
     opponentName: opponent.name,
     topPerformer,
